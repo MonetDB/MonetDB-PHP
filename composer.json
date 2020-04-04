@@ -1,0 +1,28 @@
+{
+    "name": "tbolner/monetdb-php-deux",
+    "description": "A PHP client library for accessing MonetDB.",
+    "keywords": [
+        "MonetDB",
+        "columnar",
+        "data-science",
+        "library",
+        "client"
+    ],
+    "authors": [
+        {
+            "name": "Tamas Bolner",
+            "homepage": "https://github.com/bolner",
+            "role": "Developer"
+        }
+    ],
+    "license": "Apache-2.0",
+    "type": "library",
+    "require": {
+        "php": ">=7.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "MonetDB\\": "src/"
+        }
+    }
+}
