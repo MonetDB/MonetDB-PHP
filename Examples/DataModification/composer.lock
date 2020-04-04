@@ -1,0 +1,59 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "1aa6389285def8d38461e890f13033ee",
+    "packages": [
+        {
+            "name": "tbolner/monetdb-php-deux",
+            "version": "dev-master",
+            "dist": {
+                "type": "path",
+                "url": "../../MonetDB-PHP-Deux",
+                "reference": "d642578b63c5320edea9fffb3393a028296334c4"
+            },
+            "require": {
+                "php": ">=7.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "MonetDB\\": "src/"
+                }
+            },
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Tamas Bolner",
+                    "homepage": "https://github.com/bolner",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A PHP client library for accessing MonetDB.",
+            "keywords": [
+                "MonetDB",
+                "client",
+                "columnar",
+                "data-science",
+                "library"
+            ]
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {
+        "tbolner/monetdb-php-deux": 20
+    },
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=7.2"
+    },
+    "platform-dev": [],
+    "plugin-api-version": "1.1.0"
+}

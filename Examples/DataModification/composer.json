@@ -1,0 +1,35 @@
+{
+    "name": "tbolner/monetdb-php-deux-example-modify",
+    "description": "An example application for data modification.",
+    "keywords": [
+        "MonetDB",
+        "columnar",
+        "data-science",
+        "library",
+        "client"
+    ],
+    "authors": [
+        {
+            "name": "Tamas Bolner",
+            "homepage": "https://github.com/bolner",
+            "role": "Developer"
+        }
+    ],
+    "license": "Apache-2.0",
+    "type": "application",
+    "require": {
+        "php": ">=7.2",
+        "tbolner/monetdb-php-deux": "@dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "MonetExample\\": "src/"
+        }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../MonetDB-PHP-Deux/"
+        }
+    ]
+}
