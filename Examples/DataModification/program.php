@@ -3,12 +3,17 @@
 namespace Program;
 
 use MonetDB\Connection;
-
+use MonetDB\MonetException;
 
 ini_set('display_errors', '1');
-error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT);
+error_reporting(E_ALL);
 
 require((__DIR__)."/vendor/autoload.php");
 
-$connection = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
+define("MonetDB-PHP-Deux-DEBUG", 1);
 
+try {
+    $connection = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
+} catch(MonetException $ex) {
+    echo "\n{$ex->getMessage()}\n";
+}
