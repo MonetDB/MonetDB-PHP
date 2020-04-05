@@ -25,14 +25,14 @@ use Exception;
 class InputStream {
     /*
         In case the message type is MSG_QUERY, then as a next character
-        this tells the type of the query in the responses.
+        this tells the response format.
     */
-    const Q_TABLE = "1";        // SELECT operation
-    const Q_UPDATE = "2";       // INSERT/UPDATE operations
+    const Q_TABLE = "1";        // Table with a header and rows (For a select query)
+    const Q_UPDATE = "2";       // INSERT/UPDATE operations (Tells the affected row count)
     const Q_CREATE = "3";       // CREATE/DROP TABLE operations (or without response data)
     const Q_TRANSACTION = "4";  // TRANSACTION
-    const Q_PREPARE = "5";  	// Relates to prepared statements
-    const Q_BLOCK = "6";        // QBLOCK message
+    const Q_PREPARE = "5";  	// (?) Probably relates to prepared statements
+    const Q_BLOCK = "6";        // Continuation of a table, without a header
 
     /**
      * Connection socket
@@ -71,6 +71,19 @@ class InputStream {
     private $responseEnded;
 
     /**
+     * This tracks the response object, which was last returned to
+     * the user. In case the user starts a new query, we have
+     * to disable the old Response first, so it won't touch
+     * the TCP stream anymore. (This involves reading through
+     * and discarding its input data.)
+     * If the user wants multiple concurrent queries, then they
+     * have to create multiple connections.
+     *
+     * @var Response|null
+     */
+    private $response;
+
+    /**
      * Start to read data on the socket.
      *
      * @param resource $socket
@@ -79,6 +92,7 @@ class InputStream {
     {
         $this->socket = $socket;
         $this->packets = [];
+        $this->response = null;
         $this->remainder = null;
         $this->responseEnded = false;
     }
@@ -88,10 +102,11 @@ class InputStream {
      * the last packet has a special bit set.
      * Read one for each call to this method until that's
      * reached.
+     * This method can add multiple packets to the buffer.
      *
      * @return void
      */
-    private function ReadNextPacket() {
+    public function ReadNextPacket() {
         if ($this->responseEnded) {
             return;
         }
@@ -239,51 +254,94 @@ class InputStream {
      */
     public function ReadFullResponse(): string
     {
-        do {
+        while(!$this->responseEnded) {
             $this->ReadNextPacket();
-        } while(!$this->responseEnded);
+        }
 
         return $this->GetResponse();
     }
 
-    public function ReceiveResponse(): Response {
-        // This will need a loop probly
-
-        $this->ReadNextPacket();
-        if ($this->responseEnded) {
-            $response = $this->ReadFullResponse();
-            if ($response == Connection::MSG_PROMPT) {
-                /*
-                    Successful execution without
-                    response data
-                */
-                return new Response();
-            }
-            elseif (strlen($response) > 1) {
-                $first = $response[0];
-                $second = $response[1];
-
-                if ($first == Connection::MSG_QUERY) {
-                    if ($second == self::Q_TABLE) {
-                        // Get rows
-
-                    }
-                    else if ($second == self::Q_UPDATE) {
-                        // Get number of affected
-
-                    }
-                    else {
-                        // OK
-                        return new Response();
-                    }
-                }
+    /**
+     * Make sure that the user won't mess up the one and only TCP stream.
+     */
+    private function CheckIfOldResponseDiscarded() {
+        if ($this->response !== null) {
+            if (!$this->response->IsDiscarded()) {
+                throw new MonetException("You tried to start a new query before reading through "
+                    ."the previous one. If you wish to avoid this problem in the future, then there "
+                    ."are three solutions.\n\nFirst, you can call the 'Discard()' method on the "
+                    ."'Response' object, which reads through the data and discards all.\n\nSecond, "
+                    ."if you wish to execute multiple queries in parallel, then you have to "
+                    ."create multiple instances of the 'Connection' class for them.\n\nThird, if you "
+                    ."would not like to use multiple parallel connections and neither want to read "
+                    ."through a voluminous response, then you can close the current connection and "
+                    ."create a new one.");
             }
         }
+    }
+
+    /**
+     * Read the minimal amount of data required, and
+     * return a "Response" object.
+     *
+     * @return Response
+     */
+    public function ReceiveResponse(): Response {
+        $this->CheckIfOldResponseDiscarded();
+
+        $this->response = new Response($this);
+        return $this->response;
+    }
+
+    /**
+     * Reads the data either until the first occurance of the
+     * given string, or until the end of the message is reached.
+     * Removes the returned data from the packet buffer.
+     *
+     * @param string $until
+     * @return string
+     */
+    public function ReadUntilString(string $until): string {
+        $packet_index = -1;
+
+        do {
+            $packet_index++;
+            if (!isset($this->packets[$packet_index])) {
+                $this->ReadNextPacket();
+            }
+            
+            $pos = strpos($this->packets[0], $until);
+        } while ($pos === false && !$this->responseEnded);
         
-        // TODO: return the error in the Response
-        echo "\nQuery failed\n";
-        $this->ReadNextPacket();
-        throw new MonetException("Query failed");
+        if ($pos !== false) {
+            $first = substr($this->packets[$packet_index], 0, $pos + 1);
+            $second = substr($this->packets[$packet_index], $pos + 1);
+            
+            $response = [];
+            $stays = [];
+
+            for($i = 0; $i < $packet_index; $i++) {
+                $response[] = $this->packets[$i];
+            }
+            $response[] = $first;
+
+            if (strlen($second) > 0) {
+                $stays[] = $second;
+            }
+
+            for($i = $packet_index + 1; $i < count($this->packets); $i++) {
+                $stays[] = $this->packets[$i];
+            }
+
+            $this->packets = $stays;
+
+            return implode($response);
+        }
+
+        $response = implode($this->packets);
+        $this->packets = [];
+        
+        return $response;
     }
 
     /**
@@ -299,5 +357,44 @@ class InputStream {
         $msg = $type.$beginning;
 
         return substr($response, 0, strlen($msg)) === $msg;
+    }
+
+    /**
+     * This tracks the response object, which was last returned to
+     * the user. In case the user starts a new query, we have
+     * to disable the old Response first, so it won't touch
+     * the TCP stream anymore. (This involves reading through
+     * and discarding its input data.)
+     * If the user wants multiple concurrent queries, then they
+     * have to create multiple connections.
+     *
+     * @return Response
+     */
+    public function GetCurrentResponse(): Response {
+        return $this->response;
+    }
+
+    /**
+     * Read and discard all data from the current message.
+     */
+    public function Discard() {
+        while(!$this->responseEnded) {
+            $this->ReadNextPacket();
+            $this->packets = [];
+        }
+
+        $this->packets = [];
+        $this->response = null;
+        $this->responseEnded = false;
+    }
+
+    /**
+     * Returns true is the response has ended,
+     * false otherwise.
+     *
+     * @return boolean
+     */
+    public function IsResponseEnded(): bool {
+        return $this->responseEnded;
     }
 }

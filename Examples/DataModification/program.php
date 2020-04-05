@@ -14,6 +14,10 @@ define("MonetDB-PHP-Deux-DEBUG", 1);
 
 try {
     $connection = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
+
+    $response = $connection->Query("select 1 as hello, * from sys.tables limit 5");
+
+
 } catch(MonetException $ex) {
     echo "\n{$ex->getMessage()}\n";
 }
