@@ -88,9 +88,9 @@ class ServerChallenge {
         $this->supportedSaltHashes = explode(',', strtolower(trim($parts[3])));
         $this->passwordHashAlgo = strtolower(trim($parts[5]));
 
-        if ($this->salt == "") {
+        if (strlen($this->salt) < 8) {
             throw new MonetException("Received invalid 'server challenge' string from the server. "
-                ."Empty salt field.");
+                ."The salt is too short. (less than 8 characters");
         }
 
         if (!in_array($this->backend, [

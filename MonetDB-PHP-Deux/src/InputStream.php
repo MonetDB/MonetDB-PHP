@@ -51,7 +51,7 @@ class InputStream {
     private $packets;
 
     /**
-     * When reading a apcket, it's possible to read the
+     * When reading a packet, it's possible to read the
      * beginning of the next one. In case that happens
      * the raw data gets into this propery, including
      * the header. Otherwise the value of this property
@@ -69,6 +69,41 @@ class InputStream {
      * @var bool
      */
     private $responseEnded;
+
+    /**
+     * This tells in which packet the cursor
+     * is located. The cursor tells what to
+     * respond next time to the user.
+     *
+     * @var int
+     */
+    private $cursor_packet_index;
+
+    /**
+     * This tells the character position of
+     * the cursor, inside that packet that
+     * is selected by "cursor_packet_index".
+     *
+     * @var int
+     */
+    private $cursor_position;
+
+    /**
+     * The index of the first packet in the buffer.
+     * This will be removed fist.
+     *
+     * @var int
+     */
+    private $first_packet_index;
+
+    /**
+     * The index of the last packet in the buffer.
+     * Used for data manipulation and checking
+     * for iteration end condition.
+     *
+     * @var int
+     */
+    private $last_packet_index;
 
     /**
      * This tracks the response object, which was last returned to
@@ -95,6 +130,10 @@ class InputStream {
         $this->response = null;
         $this->remainder = null;
         $this->responseEnded = false;
+        $this->cursor_packet_index = 0;
+        $this->cursor_position = 0;
+        $this->first_packet_index = 0;
+        $this->last_packet_index = -1;
     }
 
     /**
@@ -106,9 +145,9 @@ class InputStream {
      *
      * @return void
      */
-    public function ReadNextPacket() {
+    private function ReadNextPacket() {
         if ($this->responseEnded) {
-            return;
+            throw new MonetException("Internal error. Tried to call ReadNextPacket() on a response that has ended already.");
         }
 
         /*
@@ -185,12 +224,12 @@ class InputStream {
                 Check for the ending condition
             */
             $characters_read += strlen($packet);
-            $this->packets[] = $packet;
-        } while ($characters_read < $size);
+            $this->packets[++$this->last_packet_index] = $packet;
 
-        if (defined("MonetDB-PHP-Deux-DEBUG")) {
-            echo "IN:\n".trim(implode($this->packets))."\n";
-        }
+            if (defined("MonetDB-PHP-Deux-DEBUG")) {
+                echo "IN:\n".trim($packet)."\n";
+            }
+        } while ($characters_read < $size);
 
         /*
             In case the beginning of the next packet is read, put that into
@@ -202,33 +241,10 @@ class InputStream {
             $this->remainder = substr($packet, $last_packet_length);
 
             // Remove it from last packet
-            $this->packets[count($this->packets)] = substr($packet, 0, $last_packet_length);
+            $this->packets[$this->last_packet_index] = substr($packet, 0, $last_packet_length);
         } else {
             $this->remainder = null;
         }
-    }
-
-    /**
-     * Returns what is read until now, and clears the
-     * buffer.
-     * Use this only if the response ended, and only
-     * when the response is expected to be small.
-     * It resets the state of the InputStream class.
-     * (Except the remainder.)
-     *
-     * @return string
-     */
-    private function GetResponse(): string
-    {
-        if (!$this->responseEnded) {
-            throw new MonetException("Internal error: called GetResponse() on an unfinished respone.");
-        }
-
-        $response = implode($this->packets);
-        $this->packets = [];
-        $this->responseEnded = false;
-
-        return $response;
     }
 
     /**
@@ -237,12 +253,8 @@ class InputStream {
      * @return ServerChallenge
      */
     public function GetServerChallenge(): ServerChallenge {
-        do {
-            $this->ReadNextPacket();
-        } while(!$this->responseEnded);
-
         return new ServerChallenge(
-            $this->GetResponse()
+            $this->ReadFullResponse()
         );
     }
 
@@ -258,7 +270,10 @@ class InputStream {
             $this->ReadNextPacket();
         }
 
-        return $this->GetResponse();
+        $response = implode($this->packets);
+        $this->Discard();
+
+        return $response;
     }
 
     /**
@@ -269,13 +284,13 @@ class InputStream {
             if (!$this->response->IsDiscarded()) {
                 throw new MonetException("You tried to start a new query before reading through "
                     ."the previous one. If you wish to avoid this problem in the future, then there "
-                    ."are three solutions.\n\nFirst, you can call the 'Discard()' method on the "
-                    ."'Response' object, which reads through the data and discards all.\n\nSecond, "
+                    ."are three solutions.\nFirst, you can call the 'Discard()' method on the "
+                    ."'Response' object, which reads through the data and discards all.\nSecond, "
                     ."if you wish to execute multiple queries in parallel, then you have to "
-                    ."create multiple instances of the 'Connection' class for them.\n\nThird, if you "
+                    ."create multiple instances of the 'Connection' class for them.\nThird, if you "
                     ."would not like to use multiple parallel connections and neither want to read "
                     ."through a voluminous response, then you can close the current connection and "
-                    ."create a new one.");
+                    ."create a new one.\n");
             }
         }
     }
@@ -302,45 +317,98 @@ class InputStream {
      * @return string
      */
     public function ReadUntilString(string $until): string {
-        $packet_index = -1;
+        $pos = false;
+        $cursor = $this->cursor_packet_index - 1;
+        $start_pos = $this->cursor_position;
 
         do {
-            $packet_index++;
-            if (!isset($this->packets[$packet_index])) {
+            $cursor++;
+            if (!isset($this->packets[$cursor])) {
+                /*
+                    This can add multiple packets (But at least one)
+                    It won't add packets from a next message. Those are put into
+                    the "remainder" field.
+                    If responseEnded==true, then it ended at the last packet.
+                */
                 $this->ReadNextPacket();
             }
-            
-            $pos = strpos($this->packets[0], $until);
-        } while ($pos === false && !$this->responseEnded);
-        
-        if ($pos !== false) {
-            $first = substr($this->packets[$packet_index], 0, $pos + 1);
-            $second = substr($this->packets[$packet_index], $pos + 1);
-            
-            $response = [];
-            $stays = [];
 
-            for($i = 0; $i < $packet_index; $i++) {
-                $response[] = $this->packets[$i];
-            }
-            $response[] = $first;
+            $pos = strpos($this->packets[$cursor], $until, $start_pos);
+            $start_pos = 0;
+        } while (
+            $pos === false
+            && (!$this->responseEnded || $cursor < $this->last_packet_index)
+        );
 
-            if (strlen($second) > 0) {
-                $stays[] = $second;
-            }
-
-            for($i = $packet_index + 1; $i < count($this->packets); $i++) {
-                $stays[] = $this->packets[$i];
-            }
-
-            $this->packets = $stays;
-
-            return implode($response);
+        if ($pos === false) {
+            /*
+                Not found.
+                The cursor has to be on the last packet.
+                Move the position to the end of it, to include
+                everything.
+            */
+            $pos = strlen($this->packets[$cursor]) - 1;
         }
 
-        $response = implode($this->packets);
-        $this->packets = [];
-        
+        /*
+            The terminating string has been found in a packet.
+        */
+        if ($this->cursor_packet_index == $cursor) {
+            /*
+                We are still in the same packet
+            */
+            $response = substr(
+                $this->packets[$cursor],
+                $this->cursor_position,
+                $pos - $this->cursor_position + 1
+            );
+
+            $this->cursor_position = $pos + 1;
+        } else if ($this->cursor_packet_index + 1 == $cursor) {
+            /*
+                We moved 1 packet forward. They are neighboring.
+            */
+            $response = substr(
+                $this->packets[$this->cursor_packet_index],
+                $this->cursor_position
+            ).substr(
+                $this->packets[$cursor],
+                0,
+                $pos + 1
+            );
+
+            $this->cursor_position = $pos + 1;
+            unset($this->packets[$this->cursor_packet_index]);
+            $this->cursor_packet_index++;
+        } else {
+            /*
+                There are intermediate packets between the
+                start and the endpoint.
+            */
+            $parts = [];
+
+            $parts[] = substr(
+                $this->packets[$this->cursor_packet_index],
+                $this->cursor_position
+            );
+            unset($this->packets[$this->cursor_packet_index]);
+
+            for($i = $this->cursor_packet_index + 1; $i < $cursor; $i++) {
+                $parts[] = $this->packets[$i];
+                unset($this->packets[$i]);
+            }
+
+            $parts[] = substr(
+                $this->packets[$cursor],
+                0,
+                $pos + 1
+            );
+
+            $response = implode($parts);
+            $this->cursor_position = $pos + 1;
+            $this->cursor_packet_index = $cursor;
+        }
+
         return $response;
     }
 
@@ -376,6 +444,7 @@ class InputStream {
 
     /**
      * Read and discard all data from the current message.
+     * Reset the state of the stream. (Except remainder.)
      */
     public function Discard() {
         while(!$this->responseEnded) {
@@ -386,15 +455,29 @@ class InputStream {
         $this->packets = [];
         $this->response = null;
         $this->responseEnded = false;
+        $this->cursor_packet_index = 0;
+        $this->cursor_position = 0;
+        $this->first_packet_index = 0;
+        $this->last_packet_index = -1;
     }
 
     /**
-     * Returns true is the response has ended,
-     * false otherwise.
+     * Returns true if the response has ended, and there's
+     * no more unprocessed data in the buffer, false otherwise.
      *
      * @return boolean
      */
-    public function IsResponseEnded(): bool {
-        return $this->responseEnded;
+    public function EOF(): bool {
+        if (!$this->responseEnded) {
+            return false;
+        }
+
+        if (count($this->packets) < 1) {
+            return true;
+        }
+
+        return $this->responseEnded
+            && $this->cursor_packet_index >= $this->last_packet_index
+            && $this->cursor_position >= strlen($this->packets[$this->last_packet_index]);
     }
 }
