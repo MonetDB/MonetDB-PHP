@@ -173,9 +173,9 @@ function ParseParams(string $segment, int $start, string $functionDef, $docArray
         $result[] = trim("<strong>Returns:</strong> ".implode(" ", $docArray["return"]));
     }
 
-    $str = implode("<hr>", $result);
+    $str = implode("<br><br>", $result);
     if ($str != "") {
-        $str = "<hr>{$str}";
+        $str = "<br><br>{$str}";
     }
 
     return $str;
