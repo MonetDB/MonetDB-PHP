@@ -238,6 +238,7 @@ class StatusRecord {
      * Get a description of the status response in
      * a human-readable format.
      *
+     * @ignore
      * @return string
      */
     public function __toString()

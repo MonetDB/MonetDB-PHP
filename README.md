@@ -37,13 +37,13 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 | Class | Summary |
 | --- | --- |
-| [Connection](##class-connection) | Class for encapsulating a connection to a MonetDB server. |
-| [Response](##class-response) | This class represents a response for an SQL query or for a command. In case of a 'select' query, this class can be iterated through, using a 'foreach' loop.  The records are returned as associative arrays, indexed by the column names. |
-| [StatusRecord](##class-statusrecord) | The server always responds with a status line to a query, which tells data like the time spent on it, or the number of records affected, etc. |
+| [Connection](##connection-class) | Class for encapsulating a connection to a MonetDB server. |
+| [Response](##response-class) | This class represents a response for an SQL query or for a command. In case of a 'select' query, this class can be iterated through, using a 'foreach' loop.  The records are returned as associative arrays, indexed by the column names. |
+| [StatusRecord](##statusrecord-class) | The server always responds with a status line to a query, which tells data like the time spent on it, or the number of records affected, etc. |
 
 <hr><br>
 
-## Class Connection
+## Connection Class
 
 <em>Class for encapsulating a connection to a MonetDB server.</em>
 
@@ -57,7 +57,7 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 <hr><br>
 
-## Class Response
+## Response Class
 
 <em>This class represents a response for an SQL query or for a command. In case of a 'select' query, this class can be iterated through, using a 'foreach' loop.  The records are returned as associative arrays, indexed by the column names.</em>
 
@@ -71,7 +71,7 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 <hr><br>
 
-## Class StatusRecord
+## StatusRecord Class
 
 <em>The server always responds with a status line to a query, which tells data like the time spent on it, or the number of records affected, etc.</em>
 
@@ -83,7 +83,6 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 | <strong>GetRowCount</strong> | The number of rows in the response.<br><br><strong>@return</strong> integer |
 | <strong>GetTotalRows</strong> | The number of rows if the 'limit' statement was removed. (if any)<br><br><strong>@return</strong> integer |
 | <strong>GetAsText</strong> | Get a description of the status response in a human-readable format.<br><br><strong>@return</strong> string |
-| <strong>__toString</strong> | Get a description of the status response in a human-readable format.<br><br><strong>@return</strong> string |
 
 <hr><br>
 

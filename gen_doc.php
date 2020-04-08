@@ -97,12 +97,12 @@ foreach($parse_files as $path) {
         }
     }
 
-    $toc[] = "| [{$className}](##class-".strtolower($className).") | {$classDoc} |";
+    $toc[] = "| [{$className}](##".strtolower($className)."-class) | {$classDoc} |";
 
     $outLines = [];
 
     $outLines[] = "<hr><br>\n";
-    $outLines[] = "## Class {$className}";
+    $outLines[] = "## {$className} Class";
     $outLines[] = "\n<em>{$classDoc}</em>\n";
     $outLines[] = "| Method | Documentation |";
     $outLines[] = "| --- | --- |";
