@@ -170,7 +170,7 @@ function ParseParams(string $segment, int $start, string $functionDef, $docArray
     }
     
     if (isset($docArray["return"])) {
-        $result[] = trim("<strong>@return</strong> ".implode(" ", $docArray["return"]));
+        $result[] = trim("<strong>@return</strong> <em>".implode(" ", $docArray["return"]))."</em>";
     }
 
     $str = implode("<br>", $result);
@@ -178,7 +178,7 @@ function ParseParams(string $segment, int $start, string $functionDef, $docArray
         $str = "<br><br>{$str}";
     }
 
-    return $str;
+    return str_replace("|", " -or- ", $str);
 }
 
 function ParseDoc(string $doc): array {
@@ -204,7 +204,7 @@ function ParseDoc(string $doc): array {
             continue;
         }
 
-        preg_match('/^@([a-z]+)\s+[a-z\[\]]+\s+(\$[a-z]+)\s*(.*)$/i', $line, $matches);
+        preg_match('/^@([a-z]+)\s+[a-z\|\[\]]+\s+(\$[a-z]+)\s*(.*)$/i', $line, $matches);
 
         if (count($matches) < 1) {
             if ($currentParam === null) {

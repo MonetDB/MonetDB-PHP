@@ -149,9 +149,9 @@ class StatusRecord {
      * The time the server spent on executing
      * the query. In milliseconds.
      *
-     * @return float
+     * @return float|null
      */
-    public function GetExecutionTime(): float
+    public function GetExecutionTime(): ?float
     {
         return $this->executionTime;
     }
@@ -160,9 +160,9 @@ class StatusRecord {
      * The time it took to parse and optimize
      * the query.
      *
-     * @return float
+     * @return float|null
      */
-    public function GetQueryParsingTime(): float
+    public function GetQueryParsingTime(): ?float
     {
         return $this->queryParsingTime;
     }
@@ -170,9 +170,9 @@ class StatusRecord {
     /**
      * The number of rows updated or inserted.
      *
-     * @return integer
+     * @return integer|null
      */
-    public function GetAffectedRows(): int
+    public function GetAffectedRows(): ?int
     {
         return $this->affectedRows;
     }
@@ -180,9 +180,9 @@ class StatusRecord {
     /**
      * The number of rows in the response.
      *
-     * @return integer
+     * @return integer|null
      */
-    public function GetRowCount(): int
+    public function GetRowCount(): ?int
     {
         return $this->rowCount;
     }
@@ -191,9 +191,9 @@ class StatusRecord {
      * The number of rows if the 'limit' statement
      * was removed. (if any)
      *
-     * @return integer
+     * @return integer|null
      */
-    public function GetTotalRows(): int
+    public function GetTotalRows(): ?int
     {
         return $this->totalRows;
     }
