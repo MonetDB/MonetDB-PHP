@@ -166,14 +166,14 @@ function ParseParams(string $segment, int $start, string $functionDef, $docArray
     $result = [];
 
     if (count($parts) > 0) {
-        $result[] = '- '.implode('<br>- ', $parts);
+        $result[] = '<strong>@param</strong> '.implode('<br><strong>@param</strong> ', $parts);
     }
     
     if (isset($docArray["return"])) {
-        $result[] = trim("<strong>Returns:</strong> ".implode(" ", $docArray["return"]));
+        $result[] = trim("<strong>@return</strong> ".implode(" ", $docArray["return"]));
     }
 
-    $str = implode("<br><br>", $result);
+    $str = implode("<br>", $result);
     if ($str != "") {
         $str = "<br><br>{$str}";
     }

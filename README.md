@@ -49,11 +49,11 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 | Method | Documentation |
 | --- | --- |
-| <strong>__construct</strong> | Create a new connection to a MonetDB database. <br><br>- <em>string</em> <strong>$host</strong> : The host of the database. Use '127.0.0.1' if the DB is on the same machine.<br>- <em>int</em> <strong>$port</strong> : The port of the database. For MonetDB this is usually 50000.<br>- <em>string</em> <strong>$user</strong> : The user name.<br>- <em>string</em> <strong>$password</strong> : The password of the user.<br>- <em>string</em> <strong>$database</strong> : The name of the datebase to connect. Don't forget to release and start it.<br>- <em>string</em> <strong>$saltedHashAlgo</strong> <em>= "SHA1"</em> : Optional. The preferred hash algorithm to be used for exchanging the password. It has to be supported by both the server and PHP. This is only used for the salted hashing. Another stronger algorithm is used first (usually SHA512). Default is "SHA1".<br>- <em>bool</em> <strong>$syncTimeZone</strong> <em>= true</em> : If true, then tells the clients time zone offset to the server, which will convert all timestamps is case there's a difference. If false, then the timestamps will end up on the server unmodified. Default is true.<br>- <em>?int</em> <strong>$maxReplySize</strong> <em>= 1000000</em> : The maximal number of tuples returned in a response. Set it to NULL to avoid configuring the server, but that might have a default for it. Default is 1000000. |
+| <strong>__construct</strong> | Create a new connection to a MonetDB database. <br><br><strong>@param</strong> <em>string</em> <strong>$host</strong> : The host of the database. Use '127.0.0.1' if the DB is on the same machine.<br><strong>@param</strong> <em>int</em> <strong>$port</strong> : The port of the database. For MonetDB this is usually 50000.<br><strong>@param</strong> <em>string</em> <strong>$user</strong> : The user name.<br><strong>@param</strong> <em>string</em> <strong>$password</strong> : The password of the user.<br><strong>@param</strong> <em>string</em> <strong>$database</strong> : The name of the datebase to connect. Don't forget to release and start it.<br><strong>@param</strong> <em>string</em> <strong>$saltedHashAlgo</strong> <em>= "SHA1"</em> : Optional. The preferred hash algorithm to be used for exchanging the password. It has to be supported by both the server and PHP. This is only used for the salted hashing. Another stronger algorithm is used first (usually SHA512).<br><strong>@param</strong> <em>bool</em> <strong>$syncTimeZone</strong> <em>= true</em> : If true, then tells the clients time zone offset to the server, which will convert all timestamps is case there's a difference. If false, then the timestamps will end up on the server unmodified.<br><strong>@param</strong> <em>?int</em> <strong>$maxReplySize</strong> <em>= 1000000</em> : The maximal number of tuples returned in a response. Set it to NULL to avoid configuring the server, but that might have a default for it. |
 | <strong>Close</strong> | Close the connection |
-| <strong>Query</strong> | Execute an SQL query and return its response. For 'select' queries the response can be iterated using a 'foreach' statement. <br><br>- <em>string</em> <strong>$sql</strong><br><br><strong>Returns:</strong> Response |
-| <strong>QueryFirst</strong> | Execute an SQL query and return only the first row as an associative array. If there is more data on the stream, then discard all. Returns null if the query has empty result. <br><br>- <em>string</em> <strong>$sql</strong><br><br><strong>Returns:</strong> string[]|null |
-| <strong>Command</strong> | Send a 'command' to MonetDB. Commands are used for configuring the database, for example setting the maximal response size.<br><br>- <em>string</em> <strong>$command</strong><br><br><strong>Returns:</strong> Response |
+| <strong>Query</strong> | Execute an SQL query and return its response. For 'select' queries the response can be iterated using a 'foreach' statement. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@return</strong> Response |
+| <strong>QueryFirst</strong> | Execute an SQL query and return only the first row as an associative array. If there is more data on the stream, then discard all. Returns null if the query has empty result. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@return</strong> string[]|null |
+| <strong>Command</strong> | Send a 'command' to MonetDB. Commands are used for configuring the database, for example setting the maximal response size.<br><br><strong>@param</strong> <em>string</em> <strong>$command</strong><br><strong>@return</strong> Response |
 
 <hr><br>
 
@@ -63,11 +63,11 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 | Method | Documentation |
 | --- | --- |
-| <strong>Discard</strong> | Read through all of the data and discard it. Use this method when you don't want to iterate through a long query, but you would like to start a new one instead.<br><br><strong>Returns:</strong> void |
-| <strong>IsDiscarded</strong> | Returns true if this response is no longer connected to an input TCP stream.<br><br><strong>Returns:</strong> boolean |
-| <strong>GetColumnNames</strong> | Returns the names of columns for the table.<br><br><strong>Returns:</strong> string[] |
-| <strong>Fetch</strong> | Returns the next row as an associative array, or null if the query ended.<br><br><strong>Returns:</strong> array|null |
-| <strong>GetStatusRecords</strong> | Status records that tell information about the one or more queries passed to the server and executed.<br><br><strong>Returns:</strong> StatusRecord[] |
+| <strong>Discard</strong> | Read through all of the data and discard it. Use this method when you don't want to iterate through a long query, but you would like to start a new one instead.<br><br><strong>@return</strong> void |
+| <strong>IsDiscarded</strong> | Returns true if this response is no longer connected to an input TCP stream.<br><br><strong>@return</strong> boolean |
+| <strong>GetColumnNames</strong> | Returns the names of columns for the table.<br><br><strong>@return</strong> string[] |
+| <strong>Fetch</strong> | Returns the next row as an associative array, or null if the query ended.<br><br><strong>@return</strong> array|null |
+| <strong>GetStatusRecords</strong> | Status records that tell information about the one or more queries passed to the server and executed.<br><br><strong>@return</strong> StatusRecord[] |
 
 <hr><br>
 
@@ -77,13 +77,13 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 | Method | Documentation |
 | --- | --- |
-| <strong>GetExecutionTime</strong> | The time the server spent on executing the query. In milliseconds.<br><br><strong>Returns:</strong> float |
-| <strong>GetQueryParsingTime</strong> | The time it took to parse and optimize the query.<br><br><strong>Returns:</strong> float |
-| <strong>GetAffectedRows</strong> | The number of rows updated or inserted.<br><br><strong>Returns:</strong> integer |
-| <strong>GetRowCount</strong> | The number of rows in the response.<br><br><strong>Returns:</strong> integer |
-| <strong>GetTotalRows</strong> | The number of rows if the 'limit' statement was removed. (if any)<br><br><strong>Returns:</strong> integer |
-| <strong>GetAsText</strong> | Get a description of the status response in a human-readable format.<br><br><strong>Returns:</strong> string |
-| <strong>__toString</strong> | Get a description of the status response in a human-readable format.<br><br><strong>Returns:</strong> string |
+| <strong>GetExecutionTime</strong> | The time the server spent on executing the query. In milliseconds.<br><br><strong>@return</strong> float |
+| <strong>GetQueryParsingTime</strong> | The time it took to parse and optimize the query.<br><br><strong>@return</strong> float |
+| <strong>GetAffectedRows</strong> | The number of rows updated or inserted.<br><br><strong>@return</strong> integer |
+| <strong>GetRowCount</strong> | The number of rows in the response.<br><br><strong>@return</strong> integer |
+| <strong>GetTotalRows</strong> | The number of rows if the 'limit' statement was removed. (if any)<br><br><strong>@return</strong> integer |
+| <strong>GetAsText</strong> | Get a description of the status response in a human-readable format.<br><br><strong>@return</strong> string |
+| <strong>__toString</strong> | Get a description of the status response in a human-readable format.<br><br><strong>@return</strong> string |
 
 <hr><br>
 

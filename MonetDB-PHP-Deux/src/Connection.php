@@ -110,12 +110,12 @@ class Connection {
      * @param string $database The name of the datebase to connect. Don't forget to release and start it.
      * @param string $saltedHashAlgo Optional. The preferred hash algorithm to be used for exchanging the password.
      * It has to be supported by both the server and PHP. This is only used for the salted hashing.
-     * Another stronger algorithm is used first (usually SHA512). Default is "SHA1".
+     * Another stronger algorithm is used first (usually SHA512).
      * @param bool $syncTimeZone If true, then tells the clients time zone offset to the server,
      * which will convert all timestamps is case there's a difference. If false, then the timestamps
-     * will end up on the server unmodified. Default is true.
+     * will end up on the server unmodified.
      * @param int $maxReplySize The maximal number of tuples returned in a response. Set it to NULL to
-     * avoid configuring the server, but that might have a default for it. Default is 1000000.
+     * avoid configuring the server, but that might have a default for it.
      */
     function __construct(string $host, int $port, string $user, string $password, string $database,
             string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, ?int $maxReplySize = 1000000) {
