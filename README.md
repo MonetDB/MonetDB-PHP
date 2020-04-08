@@ -33,10 +33,13 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 # API Reference
 
-<!-- API START -->
+<!-- API DOC -->
 
+| Connection | <em>This is a sentence.</em> |
+| --- | --- |
+| __construct | string $host: asdasdasd<br> int $port, string $user, string $password, string $database, string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, ?int $maxReplySize = 1000000) |
 
-<!-- API END -->
+<!-- API DOC -->
 
 # Development setup through the Docker image
 

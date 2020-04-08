@@ -102,7 +102,7 @@ class Connection {
 
     /**
      * Create a new connection to a MonetDB database.
-     *
+     * 
      * @param string $host The host of the database. Use '127.0.0.1' if the DB is on the same machine.
      * @param integer $port The port of the database. For MonetDB this is usually 50000.
      * @param string $user The user name.
@@ -115,7 +115,7 @@ class Connection {
      * which will convert all timestamps is case there's a difference. If false, then the timestamps
      * will end up on the server unmodified. Default is true.
      * @param int $maxReplySize The maximal number of tuples returned in a response. Set it to NULL to
-     * disable the call to the server, but that might have a default for it. Default is 1000000.
+     * avoid configuring the server, but that might have a default for it. Default is 1000000.
      */
     function __construct(string $host, int $port, string $user, string $password, string $database,
             string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, ?int $maxReplySize = 1000000) {
@@ -297,7 +297,7 @@ class Connection {
     /**
      * Execute an SQL query and return only the first
      * row as an associative array. If there is more
-     * data on the stream then discard all.
+     * data on the stream, then discard all.
      * Returns null if the query has empty result.
      * 
      * @param string $sql
@@ -316,6 +316,14 @@ class Connection {
         return $row;
     }
 
+    /**
+     * Send a 'command' to MonetDB. Commands are used for
+     * configuring the database, for example setting the
+     * maximal response size.
+     *
+     * @param string $command
+     * @return Response
+     */
     public function Command(string $command): Response
     {
         $this->Write("X{$command}");
