@@ -82,6 +82,7 @@ class StatusRecord {
      * which tells data like the time spent on it, or the number
      * of records affected, etc.
      *
+     * @ignore
      * @param integer $queryType
      * @param string $line
      */

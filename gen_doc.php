@@ -30,6 +30,10 @@ $parse_files = [
 $target_file = "README.md";
 $doc_marker = "<!-- API DOC -->";
 $output = [];
+$toc = [
+    "| Class | Summary |",
+    "| --- | --- |"
+];
 
 foreach($parse_files as $path) {
     $segments = explode("/**\n", preg_replace('/[\r\n]+/', "\n", file_get_contents(__DIR__."/".$path)));
@@ -38,72 +42,83 @@ foreach($parse_files as $path) {
     $methods = [];
 
     foreach($segments as $segment) {
-        /*
-            Class
-        */
-        $classBoundaries = [];
-        preg_match_all('/\nclass\s+([a-z0-9_]+)\s+/is', $segment, $classBoundaries, PREG_OFFSET_CAPTURE);
+        try {
+            /*
+                Class
+            */
+            $classBoundaries = [];
+            preg_match_all('/\nclass\s+([a-z0-9_]+)\s+/is', $segment, $classBoundaries, PREG_OFFSET_CAPTURE);
 
-        if (isset($classBoundaries[0][0][1]) && isset($classBoundaries[1][0][0])) {
-            $docEnds = $classBoundaries[0][0][1];
-            $className = $classBoundaries[1][0][0];
+            if (isset($classBoundaries[0][0][1]) && isset($classBoundaries[1][0][0])) {
+                $docEnds = $classBoundaries[0][0][1];
+                $className = $classBoundaries[1][0][0];
 
-            $classDoc = implode(" ", ParseDoc(substr($segment, 0, $docEnds))["head"]);
+                $classDoc = implode(" ", ParseDoc(substr($segment, 0, $docEnds))["head"]);
 
-            continue;
-        }
+                continue;
+            }
 
-        /*
-            Constructor
-        */
-        $constructorIdentifier = "function __construct(";
-        $constructorPos = strpos($segment, $constructorIdentifier);
-        if ($constructorPos !== false) {
-            $docArray = ParseDoc(substr($segment, 0, $constructorPos));
-            $methods["__construct"] = implode(" ", $docArray["head"])."<br><br>".
-                ParseParams($segment, $constructorPos, $constructorIdentifier, $docArray);
+            /*
+                Constructor
+            */
+            $constructorIdentifier = "function __construct(";
+            $constructorPos = strpos($segment, $constructorIdentifier);
+            if ($constructorPos !== false) {
+                $docArray = ParseDoc(substr($segment, 0, $constructorPos));
+                $methods["__construct"] = implode(" ", $docArray["head"]).
+                    ParseParams($segment, $constructorPos, $constructorIdentifier, $docArray);
 
-            continue;
-        }
-        
-        /*
-            Methods
-        */
-        $methodBoundaries = [];
-        preg_match_all('/public function ([a-z0-9_]+)\s*\(/is', $segment, $methodBoundaries, PREG_OFFSET_CAPTURE);
+                continue;
+            }
+            
+            /*
+                Methods
+            */
+            $methodBoundaries = [];
+            preg_match_all('/public function ([a-z0-9_]+)\s*\(/is', $segment, $methodBoundaries, PREG_OFFSET_CAPTURE);
 
-        if (isset($methodBoundaries[0][0][0]) && isset($methodBoundaries[0][0][1])
-                && isset($methodBoundaries[1][0][0])) {
+            if (isset($methodBoundaries[0][0][0]) && isset($methodBoundaries[0][0][1])
+                    && isset($methodBoundaries[1][0][0])) {
 
-            $docArray = ParseDoc(substr($segment, 0, $methodBoundaries[0][0][1]));
-            $methodName = $methodBoundaries[1][0][0];
-            $methods[$methodName] = implode(" ", $docArray["head"])."<br><br>".
-                ParseParams($segment, $methodBoundaries[0][0][1],
-                $methodBoundaries[0][0][0], $docArray);
+                $docArray = ParseDoc(substr($segment, 0, $methodBoundaries[0][0][1]));
+                $methodName = $methodBoundaries[1][0][0];
+                $methods[$methodName] = implode(" ", $docArray["head"]).
+                    ParseParams($segment, $methodBoundaries[0][0][1],
+                    $methodBoundaries[0][0][0], $docArray);
 
-            continue;
+                continue;
+            }
+        } catch (\Exception $ex) {
+            if ($ex->getMessage() == "ignore") {
+                continue;
+            }
+
+            throw $ex;
         }
     }
 
+    $toc[] = "| [{$className}](##class-".strtolower($className).") | {$classDoc} |";
+
     $outLines = [];
 
-    $outLines[] = "| {$className} | {$classDoc} |";
+    $outLines[] = "<hr><br>\n";
+    $outLines[] = "## Class {$className}";
+    $outLines[] = "\n<em>{$classDoc}</em>\n";
+    $outLines[] = "| Method | Documentation |";
     $outLines[] = "| --- | --- |";
     foreach($methods as $methodName => $methodDoc) {
-        $outLines[] = "| {$methodName} | {$methodDoc} |";
+        $outLines[] = "| <strong>{$methodName}</strong> | {$methodDoc} |";
     }
 
     $output[] = implode("\n", $outLines);
 }
 
-echo implode("\n\n", $output);
-exit;
-
 $contentParts = explode($doc_marker, file_get_contents(__DIR__."/".$target_file));
-$finalOutput = $contentParts[0].$doc_marker."\n".implode("\n\n", $output)
-    .$doc_marker."\n".$contentParts[2];
+$finalOutput = $contentParts[0].$doc_marker."\n\n".implode("\n", $toc)
+    ."\n\n".implode("\n\n", $output)
+    ."\n\n<hr><br>\n\n".$doc_marker.$contentParts[2];
 
-file_get_contents(__DIR__."/".$target_file, $finalOutput);
+file_put_contents(__DIR__."/".$target_file, $finalOutput);
 
 /******************************************************************************/
 
@@ -125,28 +140,45 @@ function ParseParams(string $segment, int $start, string $functionDef, $docArray
         }
         
         if ($matches[1] != "") {
-            $paramParts[] = "<em>".trim($matches[1])."<em>";
+            $paramParts[] = "<em>".trim($matches[1])."</em>";
         }
 
         if ($matches[2] != "") {
-            $paramParts[] = "<strong>".trim($matches[2])."<strong>";
+            $paramParts[] = "<strong>".trim($matches[2])."</strong>";
         }
 
         if ($matches[3] != "") {
-            $paramParts[] = "<em>".trim($matches[3])."<em>";
+            $paramParts[] = "<em>".trim($matches[3])."</em>";
         }
 
-        $doc = trim(implode(" ", $docArray["param"][$matches[2]]));
-        if ($doc != "") {
-            $paramParts[] = $doc;
+        if (isset($docArray["param"][$matches[2]])) {
+            $doc = trim(implode(" ", $docArray["param"][$matches[2]]));
+            if ($doc != "") {
+                $paramParts[] = ": ".$doc;
+            }
         }
 
-        $parts[] = implode(" ", $paramParts);
+        if (count($paramParts) > 0) {
+            $parts[] = implode(" ", $paramParts);
+        }
     }
 
-    $result = implode('<br>', $parts);
+    $result = [];
 
-    return $result;
+    if (count($parts) > 0) {
+        $result[] = '- '.implode('<br>- ', $parts);
+    }
+    
+    if (isset($docArray["return"])) {
+        $result[] = trim("<strong>Returns:</strong> ".implode(" ", $docArray["return"]));
+    }
+
+    $str = implode("<hr>", $result);
+    if ($str != "") {
+        $str = "<hr>{$str}";
+    }
+
+    return $str;
 }
 
 function ParseDoc(string $doc): array {
@@ -158,8 +190,11 @@ function ParseDoc(string $doc): array {
     $currentParam = null;
 
     foreach($lines as $line) {
-        $matches = [];
+        if (strpos($line, "@ignore") === 0) {
+            throw new Exception("ignore");
+        }
 
+        $matches = [];
         preg_match('/^@return[s]{0,1}\s+(.*)$/i', $line, $matches);
 
         if (count($matches) >= 2) {
@@ -169,7 +204,7 @@ function ParseDoc(string $doc): array {
             continue;
         }
 
-        preg_match('/^@([a-z]+)\s+[a-z]+\s+(\$[a-z]+)\s*(.*)$/i', $line, $matches);
+        preg_match('/^@([a-z]+)\s+[a-z\[\]]+\s+(\$[a-z]+)\s*(.*)$/i', $line, $matches);
 
         if (count($matches) < 1) {
             if ($currentParam === null) {
@@ -179,6 +214,7 @@ function ParseDoc(string $doc): array {
             }
         } else {
             $current = trim($matches[1]);
+
             if ($current == "param") {
                 $currentParam = trim($matches[2]);
                 @$docArray["param"][$currentParam][] = trim($matches[3], "/*\r\n\t ");

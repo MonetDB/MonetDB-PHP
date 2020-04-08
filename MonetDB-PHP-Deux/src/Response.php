@@ -74,6 +74,12 @@ class Response implements \Iterator {
      */
     private $statusRecords;
 
+    /**
+     * Constructor
+     *
+     * @ignore
+     * @param InputStream $inputStream
+     */
     function __construct(InputStream $inputStream)
     {
         $this->columnNames = null;
@@ -223,6 +229,7 @@ class Response implements \Iterator {
      * Part of the "Iterator" interface.
      * Return the current row as an associative array.
      *
+     * @ignore
      * @return string[]
      */
     public function current() : array {
@@ -248,6 +255,7 @@ class Response implements \Iterator {
      * Returns the numeric index of the
      * current row.
      *
+     * @ignore
      * @return integer
      */
     public function key() : int {
@@ -257,6 +265,8 @@ class Response implements \Iterator {
     /**
      * Part of the "Iterator" interface.
      * Fetch the next record or end the query.
+     * 
+     * @ignore
      */
     public function next() {
         if ($this->isDiscarded) {
@@ -276,6 +286,8 @@ class Response implements \Iterator {
      * Part of the "Iterator" interface.
      * Can't rewind a TCP stream
      * But this is also called at the very beginning.
+     * 
+     * @ignore
      */
     public function rewind() {
         if ($this->isDiscarded) {
@@ -294,6 +306,7 @@ class Response implements \Iterator {
      * Returns false if all rows have been returned,
      * false otherwise.
      *
+     * @ignore
      * @return boolean
      */
     public function valid() : bool {
