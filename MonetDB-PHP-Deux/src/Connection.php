@@ -115,10 +115,16 @@ class Connection {
      * which will convert all timestamps is case there's a difference. If false, then the timestamps
      * will end up on the server unmodified. Default is true.
      * @param int $maxReplySize The maximal number of tuples returned in a response. Set it to NULL to
-     * disable the call to the server, but that might have a default for it. Default is 1000.
+     * disable the call to the server, but that might have a default for it. Default is 1000000.
      */
     function __construct(string $host, int $port, string $user, string $password, string $database,
-            string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, ?int $maxReplySize = 1000) {
+            string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, ?int $maxReplySize = 1000000) {
+        
+        if (mb_internal_encoding() !== "UTF-8") {
+            throw new Exception("For security reasons, this library is only allowed to be used in "
+                ."PHP environments in which the multi-byte support is enabled and the default "
+                ."character set is 'UTF-8'. See: https://www.php.net/manual/en/function.mb-internal-encoding.php");
+        }
 
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         if ($this->socket === false) {
@@ -273,11 +279,41 @@ class Connection {
         }
     }
 
+    /**
+     * Execute an SQL query and return its response.
+     * For 'select' queries the response can be iterated
+     * using a 'foreach' statement.
+     * 
+     * @param string $sql
+     * @return Response
+     */
     public function Query(string $sql): Response
     {
         $this->Write("s{$sql}\n;");
     
         return $this->inputStream->ReceiveResponse();
+    }
+
+    /**
+     * Execute an SQL query and return only the first
+     * row as an associative array. If there is more
+     * data on the stream then discard all.
+     * Returns null if the query has empty result.
+     * 
+     * @param string $sql
+     * @return string[]|null
+     */
+    public function QueryFirst(string $sql): ?array
+    {
+        $this->Write("s{$sql}\n;");
+    
+        $response = $this->inputStream->ReceiveResponse();
+        $row = $response->Fetch();
+        if (!$response->IsDiscarded()) {
+            $response->Discard();
+        }
+        
+        return $row;
     }
 
     public function Command(string $command): Response

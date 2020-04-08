@@ -3,6 +3,41 @@ MonetDB-PHP-Deux
 
 A PHP client library for accessing MonetDB.
 
+# Examples
+
+```php
+$connection = new Connection("127.0.0.1", 50000,
+    "monetdb", "monetdb", "myDatabase");
+
+$result = $connection->Query(<<<EOF
+    select
+        "name"
+    from
+        "cats"
+    where
+        "weight" > 35
+EOF
+);
+
+foreach($result as $cat) {
+    echo $cat["name"]."\n";
+}
+
+$stats = $result->GetStatusRecords()[0];
+
+echo "Execution time: {$stats->GetExecutionTime()} ms\n";
+
+```
+
+<hr />
+
+# API Reference
+
+<!-- API START -->
+
+
+<!-- API END -->
+
 # Development setup through the Docker image
 
 - Build the Docker image:

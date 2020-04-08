@@ -17,7 +17,15 @@
 
 namespace MonetDB;
 
-
+/**
+ * This class represents a response for an SQL query
+ * or for a command.
+ * In case of a 'select' query, this class can be
+ * iterated through, using a 'foreach' loop.
+ * 
+ * The records are returned as associative arrays,
+ * indexed by the column names.
+ */
 class Response implements \Iterator {
     /**
      * Discarded means that it is not attached anymore
@@ -58,6 +66,14 @@ class Response implements \Iterator {
      */
     private $rowIndex;
 
+    /**
+     * Status records that tell information about the one
+     * or more queries passed to the server and executed.
+     *
+     * @var StatusRecord[]
+     */
+    private $statusRecords;
+
     function __construct(InputStream $inputStream)
     {
         $this->columnNames = null;
@@ -65,67 +81,67 @@ class Response implements \Iterator {
         $this->isDiscarded = false;
         $this->rawCurrentRow = null;
         $this->rowIndex = 0;
+        $this->statusRecords = [];
         
-        $headLine = $this->inputStream->ReadUntilString("\n");
+        while(true) {
+            $headLine = $this->inputStream->ReadUntilString("\n");
 
-        if ($headLine == Connection::MSG_PROMPT) {
-            if (!$this->inputStream->EOF()) {
-                throw new MonetException("Invalid response from MonetDB. PROMPT packet without closing bit set in header.");
+            if ($headLine == Connection::MSG_PROMPT) {
+                if (!$this->inputStream->EOF()) {
+                    throw new MonetException("Invalid response from MonetDB. PROMPT packet without closing bit set in header.");
+                }
+
+                $this->inputStream->Discard();
+                $this->isDiscarded = true;
+                $this->inputStream = null;
+
+                return;
             }
+            elseif (strlen($headLine) > 1) {
+                $first = $headLine[0];
+                $second = $headLine[1];
 
-            $this->inputStream->Discard();
-            $this->isDiscarded = true;
-            $this->inputStream = null;
-        }
-        elseif (strlen($headLine) > 1) {
-            $first = $headLine[0];
-            $second = $headLine[1];
-
-            if ($first == Connection::MSG_QUERY) {
-                if ($second == InputStream::Q_TABLE) {
-                    /*
-                        Process the header
-                    */
-                    for($i = 0; $i < 4; $i++) {
-                        $line = $this->inputStream->ReadUntilString("\n");
-                        if (@$line[0] !== Connection::MSG_SCHEMA_HEADER) {
-                            throw new MonetException("Invalid response from MonetDB. Broken schema header in response.");
-                        }
-
-                        if ($i == 1) {
-                            // Before: "% "          (length: 2)
-                            // After: " # name\n"    (length: 8)
-                            if (substr($line, -8) != " # name\n") {
-                                throw new MonetException("Invalid response from MonetDB. The second header line of a table "
-                                    ."is supposed to contain the row of field names. Found something else:\n\n{$line}\n");
+                if ($first == Connection::MSG_QUERY) {
+                    if ($second == InputStream::Q_TABLE) {
+                        $this->statusRecords[] = new StatusRecord($second, $headLine);
+                        
+                        /*
+                            Process the header
+                        */
+                        for($i = 0; $i < 4; $i++) {
+                            $line = $this->inputStream->ReadUntilString("\n");
+                            if (@$line[0] !== Connection::MSG_SCHEMA_HEADER) {
+                                throw new MonetException("Invalid response from MonetDB. Broken schema header in response.");
                             }
 
-                            $this->columnNames = $this->ParseRow(
-                                substr($line, 2, strlen($line) - 10)    // 10 = 2 + 8
-                            );
+                            if ($i == 1) {
+                                // Before: "% "          (length: 2)
+                                // After: " # name\n"    (length: 8)
+                                if (substr($line, -8) != " # name\n") {
+                                    throw new MonetException("Invalid response from MonetDB. The second header line of a table "
+                                        ."is supposed to contain the row of field names. Found something else:\n\n{$line}\n");
+                                }
+
+                                $this->columnNames = $this->ParseRow(
+                                    substr($line, 2, -8)
+                                );
+                            }
                         }
+
+                        return;
                     }
+                    else if ($second == InputStream::Q_BLOCK) {
+                        throw new MonetException("Q_BLOCK not yet implemented");
+                    }
+                    else {
+                        $this->statusRecords[] = new StatusRecord($second, $headLine);
+                        continue;
+                    }
+                } else if ($first == Connection::MSG_INFO) {
+                    throw new MonetException("Error from MonetDB: ".substr($headLine, 1));
+                } else {
+                    throw new MonetException("Invalid response from MonetDB:\n\n{$headLine}\n");
                 }
-                else if ($second == InputStream::Q_BLOCK) {
-                    throw new MonetException("Q_BLOCK not yet implemented");
-                }
-                else if ($second == InputStream::Q_UPDATE) {
-                    // Get number of affected rows, etc.
-                    throw new MonetException("Q_UPDATE not yet implemented");
-                }
-                else {
-                    /*
-                        All the other sub-types mean OK,
-                        and they won't have any more data.
-                    */
-                    $this->inputStream->Discard();
-                    $this->isDiscarded = true;
-                    $this->inputStream = null;
-                }
-            } else if ($first == Connection::MSG_INFO) {
-                throw new MonetException("Error from MonetDB: ".substr($headLine, 1));
-            } else {
-                throw new MonetException("Invalid response from MonetDB:\n\n{$headLine}\n");
             }
         }
     }
@@ -140,13 +156,14 @@ class Response implements \Iterator {
      */
     public function Discard()
     {
+        $this->isDiscarded = true;
+
         if ($this->inputStream != null) {
             if ($this === $this->inputStream->GetCurrentResponse()) {
                 $this->inputStream->Discard();
             }
         }
         
-        $this->isDiscarded = true;
         $this->inputStream = null;
     }
 
@@ -166,16 +183,26 @@ class Response implements \Iterator {
      * @param string $row
      * @return array
      */
-    public function ParseRow(string $row): array {
+    private function ParseRow(string $row): array {
         $response = explode(",\t", $row);
 
         foreach($response as &$field) {
             /*
+             * Convert only the NULL to real values.
+             * They are not surrounded by double quotes.
+             * Converting the other types (like numbers, bool, etc.)
+             * could lead to precision problems or to difficulties
+             * in displaying the data. So leave that to the user.
+             */
+            if ($field === "NULL") {
+                $field = null;
+            }
+            /*
                 Can't use trim, because that would remove
                 quotes from the data at the end of the field.
             */
-            if (@$field[0] === '"') {
-                $field = @stripcslashes(substr($field, 1, strlen($field) - 2));
+            else if (@$field[0] === '"') {
+                $field = @stripcslashes(substr($field, 1, -1));
             }
         }
 
@@ -193,31 +220,51 @@ class Response implements \Iterator {
     }
 
     /**
+     * Part of the "Iterator" interface.
      * Return the current row as an associative array.
      *
      * @return string[]
      */
     public function current() : array {
+        if ($this->isDiscarded) {
+            return [];
+        }
+
         if (@$this->rawCurrentRow[0] !== "[") {
             throw new MonetException("Invalid response from MonetDB. Expected a table row, "
-                ."received something else:\n{$this->rawCurrentRow}");
+                ."received something else:\n{$this->rawCurrentRow}\n");
         }
 
         return array_combine(
             $this->columnNames,
             $this->ParseRow(
-                substr($this->rawCurrentRow, 2, strlen($this->rawCurrentRow) - 5)
+                substr($this->rawCurrentRow, 2, -3)
             )
         );
     }
 
+    /**
+     * Part of the "Iterator" interface.
+     * Returns the numeric index of the
+     * current row.
+     *
+     * @return integer
+     */
     public function key() : int {
         return $this->rowIndex;
     }
 
+    /**
+     * Part of the "Iterator" interface.
+     * Fetch the next record or end the query.
+     */
     public function next() {
+        if ($this->isDiscarded) {
+            return;
+        }
+
         if ($this->inputStream->EOF()) {
-            $this->rawCurrentRow = null;
+            $this->Discard();
         } else {
             $this->rawCurrentRow = $this->inputStream->ReadUntilString("\n");
         }
@@ -226,14 +273,71 @@ class Response implements \Iterator {
     }
 
     /**
+     * Part of the "Iterator" interface.
      * Can't rewind a TCP stream
      * But this is also called at the very beginning.
      */
     public function rewind() {
-        $this->rawCurrentRow = $this->inputStream->ReadUntilString("\n");
+        if ($this->isDiscarded) {
+            return;
+        }
+
+        if ($this->inputStream->EOF()) {
+            $this->Discard();
+        } else {
+            $this->rawCurrentRow = $this->inputStream->ReadUntilString("\n");
+        }
     }
 
+    /**
+     * Part of the "Iterator" interface.
+     * Returns false if all rows have been returned,
+     * false otherwise.
+     *
+     * @return boolean
+     */
     public function valid() : bool {
-        return $this->rawCurrentRow !== null;
+        return !$this->isDiscarded;
+    }
+
+    /**
+     * Returns the next row as an associative array,
+     * or null if the query ended.
+     *
+     * @return array|null
+     */
+    public function Fetch(): ?array {
+        if ($this->isDiscarded) {
+            return null;
+        }
+
+        if ($this->inputStream->EOF()) {
+            $this->Discard();
+            return null;
+        } else {
+            $this->rawCurrentRow = $this->inputStream->ReadUntilString("\n");
+        }
+
+        if (@$this->rawCurrentRow[0] !== "[") {
+            throw new MonetException("Invalid response from MonetDB. Expected a table row, "
+                ."received something else:\n{$this->rawCurrentRow}\n");
+        }
+
+        return array_combine(
+            $this->columnNames,
+            $this->ParseRow(
+                substr($this->rawCurrentRow, 2, -3)
+            )
+        );
+    }
+
+    /**
+     * Status records that tell information about the one
+     * or more queries passed to the server and executed.
+     *
+     * @return StatusRecord[]
+     */
+    public function GetStatusRecords(): array {
+        return $this->statusRecords;
     }
 }

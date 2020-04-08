@@ -227,7 +227,7 @@ class InputStream {
             $this->packets[++$this->last_packet_index] = $packet;
 
             if (defined("MonetDB-PHP-Deux-DEBUG")) {
-                echo "IN:\n".trim($packet)."\n";
+                echo "IN:\n".addcslashes($packet, "\"'\\\r\n\t")."\n";
             }
         } while ($characters_read < $size);
 
@@ -347,7 +347,7 @@ class InputStream {
                 Move the position to the end of it, to include
                 everything.
             */
-            $pos = strlen($this->packets[$cursor]) - 1;
+            $pos = max(strlen($this->packets[$cursor]) - 1, 0);
         }
 
         /*
@@ -436,9 +436,9 @@ class InputStream {
      * If the user wants multiple concurrent queries, then they
      * have to create multiple connections.
      *
-     * @return Response
+     * @return Response|null
      */
-    public function GetCurrentResponse(): Response {
+    public function GetCurrentResponse(): ?Response {
         return $this->response;
     }
 
@@ -452,6 +452,12 @@ class InputStream {
             $this->packets = [];
         }
 
+        if ($this->response !== null) {
+            $currentResponse = $this->response;
+            $this->response = null; // To avoid the callback
+            $currentResponse->Discard();
+        }
+        
         $this->packets = [];
         $this->response = null;
         $this->responseEnded = false;
