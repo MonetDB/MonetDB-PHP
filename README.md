@@ -37,9 +37,9 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 | Class | Summary |
 | --- | --- |
-| [Connection](##connection-class) | Class for encapsulating a connection to a MonetDB server. |
-| [Response](##response-class) | This class represents a response for an SQL query or for a command. In case of a 'select' query, this class can be iterated through, using a 'foreach' loop.  The records are returned as associative arrays, indexed by the column names. |
-| [StatusRecord](##statusrecord-class) | This class shares the information returned by MonetDB about the executed queries. Like execution time, number of rows affected, etc. Note that only specific fields are populated for specific queries, the others remain NULL. |
+| [Connection](#connection-class) | Class for encapsulating a connection to a MonetDB server. |
+| [Response](#response-class) | This class represents a response for an SQL query or for a command. In case of a 'select' query, this class can be iterated through, using a 'foreach' loop.  The records are returned as associative arrays, indexed by the column names. |
+| [StatusRecord](#statusrecord-class) | This class shares the information returned by MonetDB about the executed queries. Like execution time, number of rows affected, etc. Note that only specific fields are populated for specific queries, the others remain NULL. |
 
 <hr><br>
 
@@ -79,8 +79,8 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 
 | Method | Documentation |
 | --- | --- |
-| <strong>GetQueryType</strong> | Returns a short string, which identifies the type of the query.<br><br><strong>@return</strong> <em>string</em> |
-| <strong>GetDescription</strong> | Returns a user-friendly text, which describes the effect of the query.<br><br><strong>@return</strong> <em>string</em> |
+| <strong>GetQueryType</strong> | Returns a short string which identifies the type of the query.<br><br><strong>@return</strong> <em>string</em> |
+| <strong>GetDescription</strong> | Returns a user-friendly text which describes the effect of the query.<br><br><strong>@return</strong> <em>string</em> |
 | <strong>GetExecutionTime</strong> | The time the server spent on executing the query. In milliseconds.<br><br><strong>@return</strong> <em>float -or- null</em> |
 | <strong>GetQueryParsingTime</strong> | The time it took to parse and optimize the query.<br><br><strong>@return</strong> <em>float -or- null</em> |
 | <strong>GetAffectedRows</strong> | The number of rows updated or inserted.<br><br><strong>@return</strong> <em>integer -or- null</em> |

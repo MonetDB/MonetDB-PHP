@@ -152,7 +152,7 @@ class StatusRecord {
     }
 
     /**
-     * Returns a short string, which identifies
+     * Returns a short string which identifies
      * the type of the query.
      *
      * @return string
@@ -163,7 +163,7 @@ class StatusRecord {
     }
 
     /**
-     * Returns a user-friendly text, which describes
+     * Returns a user-friendly text which describes
      * the effect of the query.
      *
      * @return string

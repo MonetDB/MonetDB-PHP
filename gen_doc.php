@@ -97,7 +97,7 @@ foreach($parse_files as $path) {
         }
     }
 
-    $toc[] = "| [{$className}](##".strtolower($className)."-class) | {$classDoc} |";
+    $toc[] = "| [{$className}](#".strtolower($className)."-class) | {$classDoc} |";
 
     $outLines = [];
 
