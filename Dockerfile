@@ -25,7 +25,7 @@ ENV DEBIAN_FRONTEND noninteractive
 #######################################################################
 RUN apt-get -y update\
     && apt-get -y install dbus apt-utils locales wget curl tzdata \
-        ca-certificates openssl net-tools gnupg cron dialog telnet
+        ca-certificates openssl net-tools gnupg cron dialog
 
 #######################################################################
 # Time Zone

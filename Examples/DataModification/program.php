@@ -15,6 +15,10 @@
     limitations under the License.
 */
 
+/*
+    Example application for data manipulation and query.
+*/
+
 namespace Program;
 
 use MonetDB\Connection;
@@ -31,52 +35,83 @@ require((__DIR__)."/vendor/autoload.php");
 try {
     $connection = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
 
-    $connection->Query(<<<EOF
-        drop schema if exists "mySchema";
-
+    $result = $connection->Query('
+        drop schema if exists "mySchema" cascade;
         create schema "mySchema";
-        set schema 
+        set schema "mySchema";
 
-        drop table if exists "test";
+        drop table if exists "cats";
 
-        create table "test" (
-            name text,
-            spend decimal(20, 8),
-            tag text
+        create table "cats" (
+            "name" text,
+            "weight_kg" decimal(8, 2),
+            "category" text,
+            "birth_date" date
         );
-EOF
-    );
+    ');
 
-    $response = $connection->Query(<<<EOF
-        start transaction;
-
-        insert into
-            "test"
-            ("name", "spend", "tag")
-        values
-            ('Monday', 34.5223, 'pay'),
-            ('Cat', 623.2, 'play'),
-            ('Cloud', 72.9893, 'pay');
-
-        commit;
-
-        select
-            *
-        from
-            "test";
-EOF
-    );
-
-    echo implode(" | ", $response->GetColumnNames())."\n";
-
-    foreach($response as $record) {
-        echo json_encode($record)."\n";
-    }
-
-    echo "\n";
-    foreach($response->GetStatusRecords() as $stat) {
+    foreach($result->GetStatusRecords() as $stat) {
         echo $stat->GetAsText()."\n\n";
     }
+
+    /* *** */
+
+    $result = $connection->Query(<<<EOF
+        insert into
+            "cats"
+            ("name", "weight_kg", "category", "birth_date")
+        values
+            ('Tiger', 8.2, 'fluffy', '2012-04-23'),
+            ('Oscar', 3.4, 'spotted', '2014-02-11'),
+            ('Coco', 2.52, 'spotted', '2008-12-31'),
+            ('Max', 4.23, 'spotted', '2010-01-15'),
+            ('Sooty', 7.2, 'shorthair', '2016-10-01'),
+            ('Milo', 5.87, 'spotted', '2015-06-23'),
+            ('Muffin', 12.6, 'fluffy', '2013-04-07'),
+            ('Ginger', 9.4, 'shorthair', '2012-06-19'),
+            ('Fluffor', 13.12, 'fluffy', '2000-10-07'),
+            ('Lucy', 3.12, 'shorthair', '2018-06-29'),
+            ('Chloe', 2.12, 'spotted', '2013-05-01'),
+            ('Misty', 1.96, 'shorthair', '2014-11-24'),
+            ('Sam', 3.45, 'fluffy', '2018-12-19'),
+            ('Gizmo', 4.65, 'fluffy', '2016-05-11'),
+            ('Kimba', 1.23, 'spotted', '2020-01-08');
+
+        update
+            "cats"
+        set
+            "weight_kg" = 9.42
+        where
+            "name" = 'Ginger';
+EOF
+    );
+
+    $stats = $result->GetStatusRecords();
+
+    echo "Inserted rows: {$stats[0]->GetAffectedRows()}\n";
+    echo "Updated rows: {$stats[1]->GetAffectedRows()}\n";
+
+    /* *** */
+
+    $result = $connection->Query('
+        select
+            "category",
+            round(sys.stddev_samp("weight_kg"), 2) as "weight_stddev",
+            round(sys.median("weight_kg"), 2) as "weight_median",
+            round(avg("weight_kg"), 2) as "weight_mean"
+        from
+            "cats"
+        group by
+            "category"
+    ');
+
+    echo "\n";
+    foreach($result as $record) {
+        echo "{$record["category"]} : Mean: {$record["weight_mean"]} kg, "
+            ."Median: {$record["weight_median"]} kg, "
+            ."StdDev: {$record["weight_stddev"]} kg\n";
+    }
+
 } catch(MonetException $ex) {
     echo "\n{$ex->getMessage()}\n";
 }

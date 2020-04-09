@@ -101,6 +101,15 @@ class Connection {
     private $inputStream;
 
     /**
+     * An associative cache for storing the IDs of
+     * prepared statements, indexed by the hash
+     * of the SQL queries.
+     *
+     * @var array
+     */
+    private $preparedStatements;
+
+    /**
      * Create a new connection to a MonetDB database.
      * 
      * @param string $host The host of the database. Use '127.0.0.1' if the DB is on the same machine.
@@ -144,7 +153,7 @@ class Connection {
         $this->database = trim($database);
         $this->saltedHashAlgo = strtolower(trim($saltedHashAlgo));
 
-        $this->inputStream = new InputStream($this->socket);
+        $this->inputStream = new InputStream($this, $this->socket);
 
         /*
             Authenticate
@@ -183,14 +192,13 @@ class Connection {
             $inputStream = $this->inputStream->ReadFullResponse();
             if (InputStream::IsResponse($inputStream, self::MSG_REDIRECT, "mapi:merovingian:")) {
                 /*
-                    A "Merovingian" redirect.
-                    This probably happens because inactive servers are stopped after a while
-                    by the main process. When you successfully authenticate with the main
-                    process, and your target database is currently stopped, then it starts
-                    up the new server on a new process. But then you have to repeat the
-                    authentication with the newly started process. (In this case the main
-                    process acts like a proxy, and it forwards the requests and the
-                    responses.)
+                    Only the main process of MonetDB opens ports to listen on, and it spawns
+                    separate sub-processes for each database.
+                    The main process acts as a proxy and it forwards the queries to the
+                    processes of the databases. For security reasons the user has to 
+                    authenticate not just at the main process, but also at the
+                    sub-process too. This repetition of the authentication process is
+                    called a "Merovingian redirect".
                 */
                 continue;
             }
@@ -204,7 +212,7 @@ class Connection {
                 throw(new MonetException("Authentication Failed. Invalid credentials."));
             }
 
-            throw(new MonetException("Authentication Failed. Unexpected inputStream from server:\n{$inputStream}\n"));
+            throw(new MonetException("Authentication Failed. Unexpected response from server:\n{$inputStream}\n"));
         }
 
         throw(new MonetException("Authentication Failed. Too many Merovingian redirects."));
@@ -233,6 +241,12 @@ class Connection {
         $this->socket = false;
     }
 
+    /**
+     * Write a message in packets of the maximal
+     * allowed size to the server.
+     *
+     * @param string $msg
+     */
     private function Write(string $msg)
     {
         $this->CheckIfClosed();
@@ -282,15 +296,31 @@ class Connection {
     /**
      * Execute an SQL query and return its response.
      * For 'select' queries the response can be iterated
-     * using a 'foreach' statement.
+     * using a 'foreach' statement. You can pass an array as
+     * second parameter to execute the query as prepared-statement,
+     * where the array contains the parameter values.
+     * SECURITY NOTICE: For prepared statements in MonetDB, the
+     * parameter values are passed in a regular 'EXECUTE' command,
+     * using escaping. Therefore the same security considerations
+     * apply here as for using the Connection->Escape(...) method.
+     * Please read the comments for that method.
      * 
      * @param string $sql
+     * @param array|null $params An optional array for prepared-statement parameters.
+     * If not provided (or null), then a normal query is executed, instead of
+     * a prepared-statement. The parameter values will retain their PHP type if
+     * possible. The following values won't be converted to string: null, true, false
+     * and numeric values.
      * @return Response
      */
-    public function Query(string $sql): Response
+    public function Query(string $sql, array $params = null): Response
     {
-        $this->Write("s{$sql}\n;");
-    
+        if (is_array($params)) {
+            $this->WritePreparedStatement($sql, $params);
+        } else {
+            $this->Write("s{$sql}\n;");
+        }
+        
         return $this->inputStream->ReceiveResponse();
     }
 
@@ -299,13 +329,24 @@ class Connection {
      * row as an associative array. If there is more
      * data on the stream, then discard all.
      * Returns null if the query has empty result.
+     * You can pass an array as second parameter to execute
+     * the query as prepared-statement, where the array
+     * contains the parameter values.
      * 
      * @param string $sql
+     * @param array|null $params An optional array for prepared-statement parameters.
+     * If not provided (or null), then a normal query is executed, instead of
+     * a prepared-statement. See the 'Query' method for more information about
+     * the parameter values.
      * @return string[]|null
      */
-    public function QueryFirst(string $sql): ?array
+    public function QueryFirst(string $sql, array $params = null): ?array
     {
-        $this->Write("s{$sql}\n;");
+        if (is_array($params)) {
+            $this->WritePreparedStatement($sql, $params);
+        } else {
+            $this->Write("s{$sql}\n;");
+        }
     
         $response = $this->inputStream->ReceiveResponse();
         $row = $response->Fetch();
@@ -329,5 +370,82 @@ class Connection {
         $this->Write("X{$command}");
     
         return $this->inputStream->ReceiveResponse();
+    }
+
+    /**
+     * Escape a string value, to be inserted into a query,
+     * inside single quotes. SECURITY WARNING:
+     * This library forces the use of multi-byte support
+     * and UTF-8 encoding, which is also used by MonetDB,
+     * avoiding the SQL-insertion attacks, which play with
+     * conversions between character encodings.
+     * This function uses the 'addcslashes' function of PHP,
+     * which is based on C-style escaping, like MonetDB.
+     * But even with these two precautionary measures,
+     * full security cannot be guaranteed. It's better
+     * if one never trusts security on MonetDB. Use it
+     * only for data analysis, but don't use it for
+     * authentication or session management, etc.
+     * Non-authenticated users should never have the
+     * opportunity to execute parameterized queries with
+     * it, and never run the server as root.
+     *
+     * @param string $value
+     * @return string
+     */
+    public function Escape(string $value): string {
+        return addcslashes($value, "\\\"'\r\n\t\0\x1a");
+    }
+
+    /**
+     * Create and execute a prepared statement.
+     * Use the in-memory cache to store or retrieve it.
+     *
+     * @param string $sql
+     * @param array $params
+     */
+    private function WritePreparedStatement(string $sql, array $params) {
+        $queryHash = hash('sha256', $sql);
+
+        if (!isset($this->preparedStatements[$queryHash])) {
+            $this->Write("sPREPARE ".rtrim($sql, "\r\n\t ;")."\n;");
+            $response = $this->inputStream->ReceiveResponse();
+            $status = $response->GetStatusRecords()[0];
+            $this->preparedStatements[$queryHash] = $status->GetPreparedStatementID();
+
+            $response->Discard();
+        }
+
+        $id = $this->preparedStatements[$queryHash];
+        $escaped = [];
+        foreach($params as $param) {
+            if ($param === null) {
+                $escaped[] = "NULL";
+            }
+            else if ($param === true) {
+                $escaped[] = "true";
+            }
+            else if ($param === false) {
+                $escaped[] = "false";
+            }
+            elseif (is_numeric($param)) {
+                $escaped[] = $param + 0;
+            } else {
+                $escaped[] = "'".$this->Escape((string)$param)."'";
+            }
+        }
+
+        $this->Write("sEXECUTE {$id}(".implode(",", $escaped).");");
+    }
+
+    /**
+     * Clears the in-memory cache of prepared statements.
+     * This is called automatically when an error is
+     * received from MonetDB, because that also purges
+     * the prepared statements and all session state
+     * in this case.
+     */
+    public function ClearPsCache() {
+        $this->preparedStatements = [];
     }
 }

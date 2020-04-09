@@ -189,13 +189,13 @@ class ServerChallenge {
         }
 
         if (!in_array($saltHashAlgo, $supported)) {
-            throw new MonetException("The salt hash algorith '{$this->passwordHashAlgo}', which can be specified "
+            throw new MonetException("The salt hash algorith '{$this->passwordHashAlgo}', which was specified "
                 ."in a constructor parameter of the 'Connection' class, is not supported by PHP. "
                 ."The following algorithms are supported by it: ".implode(', ', $supported));
         }
 
         if (!in_array($saltHashAlgo, $this->supportedSaltHashes)) {
-            throw new MonetException("The salt hash algorith '{$this->passwordHashAlgo}', which can be specified "
+            throw new MonetException("The salt hash algorith '{$this->passwordHashAlgo}', which was specified "
                 ."in a constructor parameter of the 'Connection' class, is not supported by the server. "
                 ."The following algorithms are supported by it: ".implode(', ', $this->supportedSaltHashes));
         }

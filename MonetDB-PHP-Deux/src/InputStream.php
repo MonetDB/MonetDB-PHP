@@ -35,6 +35,13 @@ class InputStream {
     const Q_BLOCK = "6";        // Continuation of a table, without a header
 
     /**
+     * The related connection
+     *
+     * @var Connection
+     */
+    private $connection;
+
+    /**
      * Connection socket
      *
      * @var resource
@@ -123,8 +130,9 @@ class InputStream {
      *
      * @param resource $socket
      */
-    function __construct($socket)
+    function __construct(Connection $connection, $socket)
     {
+        $this->connection = $connection;
         $this->socket = $socket;
         $this->packets = [];
         $this->response = null;
@@ -143,9 +151,11 @@ class InputStream {
      * reached.
      * This method can add multiple packets to the buffer.
      *
+     * @param bool $discard If true, then don't store the pack in
+     * the buffer, just discard them.
      * @return void
      */
-    private function ReadNextPacket() {
+    private function ReadNextPacket(bool $discard = false) {
         if ($this->responseEnded) {
             throw new MonetException("Internal error. Tried to call ReadNextPacket() on a response that has ended already.");
         }
@@ -224,8 +234,10 @@ class InputStream {
                 Check for the ending condition
             */
             $characters_read += strlen($packet);
-            $this->packets[++$this->last_packet_index] = $packet;
-
+            if (!$discard) {
+                $this->packets[++$this->last_packet_index] = $packet;
+            }
+            
             if (defined("MonetDB-PHP-Deux-DEBUG")) {
                 echo "IN:\n".addcslashes($packet, "\"'\\\r\n\t")."\n";
             }
@@ -241,7 +253,9 @@ class InputStream {
             $this->remainder = substr($packet, $last_packet_length);
 
             // Remove it from last packet
-            $this->packets[$this->last_packet_index] = substr($packet, 0, $last_packet_length);
+            if (!$discard) {
+                $this->packets[$this->last_packet_index] = substr($packet, 0, $last_packet_length);
+            }
         } else {
             $this->remainder = null;
         }
@@ -304,7 +318,7 @@ class InputStream {
     public function ReceiveResponse(): Response {
         $this->CheckIfOldResponseDiscarded();
 
-        $this->response = new Response($this);
+        $this->response = new Response($this->connection, $this);
         return $this->response;
     }
 
@@ -447,9 +461,8 @@ class InputStream {
      * Reset the state of the stream. (Except remainder.)
      */
     public function Discard() {
-        while(!$this->responseEnded) {
-            $this->ReadNextPacket();
-            $this->packets = [];
+        while (!$this->responseEnded) {
+            $this->ReadNextPacket(true);
         }
 
         if ($this->response !== null) {
@@ -482,8 +495,7 @@ class InputStream {
             return true;
         }
 
-        return $this->responseEnded
-            && $this->cursor_packet_index >= $this->last_packet_index
+        return $this->cursor_packet_index >= $this->last_packet_index
             && $this->cursor_position >= strlen($this->packets[$this->last_packet_index]);
     }
 }

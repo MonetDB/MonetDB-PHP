@@ -18,9 +18,11 @@
 namespace MonetDB;
 
 /**
- * The server always responds with a status line to a query,
- * which tells data like the time spent on it, or the number
- * of records affected, etc.
+ * This class shares the information returned by MonetDB
+ * about the executed queries. Like execution time,
+ * number of rows affected, etc.
+ * Note that only specific fields are populated for specific
+ * queries, the others remain NULL.
  */
 class StatusRecord {
     /**
@@ -70,12 +72,13 @@ class StatusRecord {
     private $rowCount = null;
 
     /**
-     * The number of rows if the 'limit' statement
-     * was removed. (if any)
+     * If the query created a prepared statement, then
+     * this contains its ID, which can be used in an
+     * 'EXECUTE' statement.
      *
      * @var int
      */
-    private $totalRows = null;
+    private $preparedStatementID = null;
 
     /**
      * The server always responds with a status line to a query,
@@ -93,12 +96,11 @@ class StatusRecord {
             $this->queryTypeDescription = "Select query";
             $fields = $this->ParseFields($line, 8);
             $this->rowCount = (int)$fields[1];
-            $this->totalRows = (int)$fields[2];
             $this->executionTime = $fields[4] / 1000;
             $this->queryParsingTime = $fields[5] / 1000;
         } else if ($queryType == InputStream::Q_CREATE) {
-            $this->queryType = "create";
-            $this->queryTypeDescription = "Create table or set variable";
+            $this->queryType = "schema";
+            $this->queryTypeDescription = "Modify schema";
             $fields = $this->ParseFields($line, 2);
             $this->executionTime = $fields[0] / 1000;
             $this->queryParsingTime = $fields[1] / 1000;
@@ -117,8 +119,12 @@ class StatusRecord {
             } else {
                 $this->queryTypeDescription = "Transaction ended";
             }
-        }
-        else {
+        } else if ($queryType == InputStream::Q_PREPARE) {
+            $this->queryType = "prepared_statement";
+            $this->queryTypeDescription = "A prepared statement has been created.";
+            $fields = $this->ParseFields($line, 4);
+            $this->preparedStatementID = (int)$fields[0];
+        } else {
             throw new MonetException("Unknown reply form MonetDB:\n{$line}\n");
         }
 
@@ -143,6 +149,28 @@ class StatusRecord {
         }
 
         return $parts;
+    }
+
+    /**
+     * Returns a short string, which identifies
+     * the type of the query.
+     *
+     * @return string
+     */
+    public function GetQueryType(): string
+    {
+        return $this->queryType;
+    }
+
+    /**
+     * Returns a user-friendly text, which describes
+     * the effect of the query.
+     *
+     * @return string
+     */
+    public function GetDescription(): string
+    {
+        return $this->queryTypeDescription;
     }
 
     /**
@@ -188,17 +216,6 @@ class StatusRecord {
     }
 
     /**
-     * The number of rows if the 'limit' statement
-     * was removed. (if any)
-     *
-     * @return integer|null
-     */
-    public function GetTotalRows(): ?int
-    {
-        return $this->totalRows;
-    }
-
-    /**
      * Get a description of the status response in
      * a human-readable format.
      *
@@ -227,8 +244,8 @@ class StatusRecord {
             $response[] = "Rows: {$this->rowCount}";
         }
 
-        if ($this->totalRows !== null) {
-            $response[] = "Total rows: {$this->totalRows}";
+        if ($this->preparedStatementID !== null) {
+            $response[] = "Prepared statement ID: {$this->preparedStatementID}";
         }
 
         return implode("\n", $response);
@@ -244,5 +261,16 @@ class StatusRecord {
     public function __toString()
     {
         return $this->GetAsText();
+    }
+
+    /**
+     * Get the ID of a created prepared statement.
+     * This ID can be used in an 'EXECUTE' statement,
+     * but only in the same session.
+     *
+     * @return integer|null
+     */
+    public function GetPreparedStatementID(): ?int {
+        return $this->preparedStatementID;
     }
 }
