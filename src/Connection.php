@@ -325,6 +325,8 @@ class Connection {
             return $this->inputStream->ReceiveResponse();
         } catch (MonetException $ex) {
             if (stripos($ex->getMessage(), "No prepared statement with id") !== false) {
+                $this->ClearPsCache();
+                
                 throw new MonetException("When using query parameters (prepared statements), it is only allowed to"
                     ."have a single query in the SQL block. Multiple passed or syntax error.");
             }
@@ -360,6 +362,8 @@ class Connection {
         try {
             $response = $this->inputStream->ReceiveResponse();
         } catch (MonetException $ex) {
+            $this->ClearPsCache();
+            
             if (stripos($ex->getMessage(), "No prepared statement with id") !== false) {
                 throw new MonetException("When using query parameters (prepared statements), it is only allowed to"
                     ."have a single query in the SQL block. Multiple passed or syntax error.");

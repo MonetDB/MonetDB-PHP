@@ -36,7 +36,7 @@ Main features:
 This library is available on Packagist at:
 - https://packagist.org/packages/tbolner/monetdb-php-deux
 
-First install [Composer](https://getcomposer.org/download/), then execute the following in you project's directory:
+First install [Composer](https://getcomposer.org/download/), then execute the following in your project's directory:
 
 ```
 composer require tbolner/monetdb-php-deux
