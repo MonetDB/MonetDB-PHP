@@ -4,15 +4,21 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f8455d8963c315076d924a502b2df9d2",
+    "content-hash": "8313bb02251b9980ae29ae810e03103c",
     "packages": [
         {
             "name": "tbolner/monetdb-php-deux",
-            "version": "dev-master",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/bolner/MonetDB-PHP-Deux.git",
+                "reference": "8cc887890144d23b524ddee6ed5296b08d72e10d"
+            },
             "dist": {
-                "type": "path",
-                "url": "../../MonetDB-PHP-Deux",
-                "reference": "d642578b63c5320edea9fffb3393a028296334c4"
+                "type": "zip",
+                "url": "https://api.github.com/repos/bolner/MonetDB-PHP-Deux/zipball/8cc887890144d23b524ddee6ed5296b08d72e10d",
+                "reference": "8cc887890144d23b524ddee6ed5296b08d72e10d",
+                "shasum": ""
             },
             "require": {
                 "php": ">=7.2"
@@ -23,6 +29,7 @@
                     "MonetDB\\": "src/"
                 }
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "Apache-2.0"
             ],
@@ -40,15 +47,14 @@
                 "columnar",
                 "data-science",
                 "library"
-            ]
+            ],
+            "time": "2020-04-10T14:20:52+00:00"
         }
     ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "tbolner/monetdb-php-deux": 20
-    },
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

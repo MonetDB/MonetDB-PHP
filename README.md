@@ -45,7 +45,7 @@ composer require tbolner/monetdb-php-deux
 Or add the following line to your `composer.json` file's `require` section:
 
 ```
-
+"tbolner/monetdb-php-deux": "^1.0"
 ```
 
 # Examples
