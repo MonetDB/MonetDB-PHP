@@ -31,7 +31,7 @@ class InputStream {
     const Q_UPDATE = "2";       // INSERT/UPDATE operations (Tells the affected row count)
     const Q_CREATE = "3";       // CREATE/DROP TABLE operations (or without response data)
     const Q_TRANSACTION = "4";  // TRANSACTION
-    const Q_PREPARE = "5";  	// (?) Probably relates to prepared statements
+    const Q_PREPARE = "5";  	// Creating a prepared statement
     const Q_BLOCK = "6";        // Continuation of a table, without a header
 
     /**
