@@ -297,18 +297,18 @@ class Connection {
      * Execute an SQL query and return its response.
      * For 'select' queries the response can be iterated
      * using a 'foreach' statement. You can pass an array as
-     * second parameter to execute the query as prepared-statement,
+     * second parameter to execute the query as prepared statement,
      * where the array contains the parameter values.
-     * SECURITY NOTICE: For prepared statements in MonetDB, the
+     * SECURITY WARNING: For prepared statements in MonetDB, the
      * parameter values are passed in a regular 'EXECUTE' command,
      * using escaping. Therefore the same security considerations
      * apply here as for using the Connection->Escape(...) method.
      * Please read the comments for that method.
      * 
      * @param string $sql
-     * @param array|null $params An optional array for prepared-statement parameters.
+     * @param array|null $params An optional array for prepared statement parameters.
      * If not provided (or null), then a normal query is executed, instead of
-     * a prepared-statement. The parameter values will retain their PHP type if
+     * a prepared statement. The parameter values will retain their PHP type if
      * possible. The following values won't be converted to string: null, true, false
      * and numeric values.
      * @return Response
@@ -330,13 +330,13 @@ class Connection {
      * data on the stream, then discard all.
      * Returns null if the query has empty result.
      * You can pass an array as second parameter to execute
-     * the query as prepared-statement, where the array
+     * the query as prepared statement, where the array
      * contains the parameter values.
      * 
      * @param string $sql
-     * @param array|null $params An optional array for prepared-statement parameters.
+     * @param array|null $params An optional array for prepared statement parameters.
      * If not provided (or null), then a normal query is executed, instead of
-     * a prepared-statement. See the 'Query' method for more information about
+     * a prepared statement. See the 'Query' method for more information about
      * the parameter values.
      * @return string[]|null
      */
@@ -375,26 +375,28 @@ class Connection {
     /**
      * Escape a string value, to be inserted into a query,
      * inside single quotes. SECURITY WARNING:
-     * This library forces the use of multi-byte support
-     * and UTF-8 encoding, which is also used by MonetDB,
-     * avoiding the SQL-insertion attacks, which play with
-     * conversions between character encodings.
-     * This function uses the 'addcslashes' function of PHP,
-     * which is based on C-style escaping, like MonetDB.
-     * But even with these two precautionary measures,
-     * full security cannot be guaranteed. It's better
-     * if one never trusts security on MonetDB. Use it
+     * Currently no successful SQL-injection attacks are known,
+     * but this function was implemented without full knowledge
+     * of the parsing algorithm on the server side, therefore
+     * it cannot be trusted comletely. Use this library
      * only for data analysis, but don't use it for
      * authentication or session management, etc.
      * Non-authenticated users should never have the
      * opportunity to execute parameterized queries with
      * it, and never run the server as root.
+     * As a security measure this library forces the use of
+     * multi-byte support and UTF-8 encoding, which is also
+     * used by MonetDB, avoiding the SQL-insertion attacks,
+     * which play with differences between character encodings.
+     * The following characters are escaped by this method:
+     * backslash, single quote, carriage return,
+     * line feed, tabulator, null character, CTRL+Z.
      *
      * @param string $value
      * @return string
      */
     public function Escape(string $value): string {
-        return addcslashes($value, "\\\"'\r\n\t\0\x1a");
+        return addcslashes($value, "\\'\r\n\t\0\x1a");
     }
 
     /**

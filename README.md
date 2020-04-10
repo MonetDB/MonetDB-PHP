@@ -3,30 +3,165 @@ MonetDB-PHP-Deux
 
 A PHP client library for accessing MonetDB.
 
+Main features:
+- Parameterized queries, using prepared statements.
+- Multiple, concurrent connections.
+- Streaming data parsing. Low memory footprint.
+- Allows access to response stats, like execution time and affected row count, etc.
+- The thrown `MonetException` exception objects contain user-friendly error messages.
+
+# Table of contents
+
+- [MonetDB-PHP-Deux](#monetdb-php-deux)
+- [Table of contents](#table-of-contents)
+- [Installation](#installation)
+- [Examples](#examples)
+  - [Example 1: Simple query](#example-1-simple-query)
+  - [Example 2: Get execution stats](#example-2-get-execution-stats)
+  - [Example 3: Parameterized query with prepared statement](#example-3-parameterized-query-with-prepared-statement)
+  - [Example 4: Using escaping](#example-4-using-escaping)
+  - [Example 5: Renaming fields](#example-5-renaming-fields)
+  - [Example 6: Query the first record only](#example-6-query-the-first-record-only)
+- [API Reference](#api-reference)
+  - [Connection Class](#connection-class)
+  - [Response Class](#response-class)
+  - [StatusRecord Class](#statusrecord-class)
+- [Development setup through the Docker image](#development-setup-through-the-docker-image)
+
+# Installation
+
+This library is available on Packagist at:
+- https://packagist.org/packages/tbolner/monetdb-php-deux
+
+First install [Composer](https://getcomposer.org/download/), then execute the following in you project's directory:
+
+```
+composer require tbolner/monetdb-php-deux
+```
+
+Or add the following line to your `composer.json` file's `require` section:
+
+```
+
+```
+
 # Examples
 
+- [Data modification](Examples/DataModification/)
+- [Web query](Examples/WebQuery/)
+
+## Example 1: Simple query
+
 ```php
+use MonetDB\Connection;
+
 $connection = new Connection("127.0.0.1", 50000,
     "monetdb", "monetdb", "myDatabase");
 
-$result = $connection->Query(<<<EOF
+$result = $connection->Query('
     select
-        "name"
+        name, weight_kg, category, birth_date, net_worth_usd
     from
+        cats
+');
+
+foreach($result as $record) {
+    echo "Name: {$record["name"]}\n";
+    echo "Weight: {$record["weight_kg"]} kg\n";
+    echo "Category: {$record["category"]}\n";
+    echo "Birth date: {$record["birth_date"]}\n";
+    echo "Net worth: ${$record["net_worth_usd"]}\n\n";
+}
+```
+
+## Example 2: Get execution stats
+
+```php
+$result = $connection->Query(<<<EOF
+    update
         "cats"
+    set
+        "weight_kg" = 9.2
     where
-        "weight" > 35
+        "name" = 'Ginger';
+    
+    insert into
+        "cats"
+        ("name", "weight_kg", "category", "birth_date", "net_worth_usd")
+    values
+        ('Mew', 8.2, 'shorthair', '2015-03-11', 1250000);
 EOF
 );
 
-foreach($result as $cat) {
-    echo $cat["name"]."\n";
+foreach($result->GetStatusRecords() as $stat) {
+    echo "Affected rows: {$stat->GetAffectedRows()}\n";
 }
+```
 
-$stats = $result->GetStatusRecords()[0];
+## Example 3: Parameterized query with prepared statement
 
-echo "Execution time: {$stats->GetExecutionTime()} ms\n";
+```php
+$result = $connection->Query('
+    select
+        *
+    from
+        "cats"
+    where
+        "name" = ?
+        and "weight_kg" > ?
+    EOF
+', [ "D'artagnan", 5.3 ]);
+```
 
+## Example 4: Using escaping
+
+```php
+$value = $connection->Escape("D'artagnan");
+
+$result = $connection->Query(<<<EOF
+    select
+        *
+    from
+        "cats"
+    where
+        "name" = '{$value}'
+EOF
+);
+```
+
+## Example 5: Renaming fields
+
+```php
+$result = $connection->Query('
+    select
+        "category",
+        sys.stddev_samp("weight_kg") as "weight_stddev",
+        sys.median("weight_kg") as "weight_median",
+        avg("weight_kg") as "weight_mean"
+    from
+        "cats"
+    group by
+        "category"
+');
+
+foreach($result as $record) {
+    echo "{$record["category"]} : Mean: {$record["weight_mean"]} kg, "
+        ."Median: {$record["weight_median"]} kg, "
+        ."StdDev: {$record["weight_stddev"]} kg\n";
+}
+```
+
+## Example 6: Query the first record only
+
+```php
+$record = $connection->QueryFirst('
+    select
+        sum("weight_kg") as "weight"
+    from
+        "cats"
+');
+
+echo "Sum: {$record["weight"]}\n";
 ```
 
 <hr><br>
@@ -51,10 +186,10 @@ echo "Execution time: {$stats->GetExecutionTime()} ms\n";
 | --- | --- |
 | <strong>__construct</strong> | Create a new connection to a MonetDB database. <br><br><strong>@param</strong> <em>string</em> <strong>$host</strong> : The host of the database. Use '127.0.0.1' if the DB is on the same machine.<br><strong>@param</strong> <em>int</em> <strong>$port</strong> : The port of the database. For MonetDB this is usually 50000.<br><strong>@param</strong> <em>string</em> <strong>$user</strong> : The user name.<br><strong>@param</strong> <em>string</em> <strong>$password</strong> : The password of the user.<br><strong>@param</strong> <em>string</em> <strong>$database</strong> : The name of the datebase to connect. Don't forget to release and start it.<br><strong>@param</strong> <em>string</em> <strong>$saltedHashAlgo</strong> <em>= "SHA1"</em> : Optional. The preferred hash algorithm to be used for exchanging the password. It has to be supported by both the server and PHP. This is only used for the salted hashing. Another stronger algorithm is used first (usually SHA512).<br><strong>@param</strong> <em>bool</em> <strong>$syncTimeZone</strong> <em>= true</em> : If true, then tells the clients time zone offset to the server, which will convert all timestamps is case there's a difference. If false, then the timestamps will end up on the server unmodified.<br><strong>@param</strong> <em>?int</em> <strong>$maxReplySize</strong> <em>= 1000000</em> : The maximal number of tuples returned in a response. Set it to NULL to avoid configuring the server, but that might have a default for it. |
 | <strong>Close</strong> | Close the connection |
-| <strong>Query</strong> | Execute an SQL query and return its response. For 'select' queries the response can be iterated using a 'foreach' statement. You can pass an array as second parameter to execute the query as prepared-statement, where the array contains the parameter values. SECURITY NOTICE: For prepared statements in MonetDB, the parameter values are passed in a regular 'EXECUTE' command, using escaping. Therefore the same security considerations apply here as for using the Connection->Escape(...) method. Please read the comments for that method. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared-statement parameters. If not provided (or null), then a normal query is executed, instead of a prepared-statement. The parameter values will retain their PHP type if possible. The following values won't be converted to string: null, true, false and numeric values.<br><strong>@return</strong> <em>Response</em> |
-| <strong>QueryFirst</strong> | Execute an SQL query and return only the first row as an associative array. If there is more data on the stream, then discard all. Returns null if the query has empty result. You can pass an array as second parameter to execute the query as prepared-statement, where the array contains the parameter values. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared-statement parameters. If not provided (or null), then a normal query is executed, instead of a prepared-statement. See the 'Query' method for more information about the parameter values.<br><strong>@return</strong> <em>string[] -or- null</em> |
+| <strong>Query</strong> | Execute an SQL query and return its response. For 'select' queries the response can be iterated using a 'foreach' statement. You can pass an array as second parameter to execute the query as prepared statement, where the array contains the parameter values. SECURITY WARNING: For prepared statements in MonetDB, the parameter values are passed in a regular 'EXECUTE' command, using escaping. Therefore the same security considerations apply here as for using the Connection->Escape(...) method. Please read the comments for that method. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared statement parameters. If not provided (or null), then a normal query is executed, instead of a prepared statement. The parameter values will retain their PHP type if possible. The following values won't be converted to string: null, true, false and numeric values.<br><strong>@return</strong> <em>Response</em> |
+| <strong>QueryFirst</strong> | Execute an SQL query and return only the first row as an associative array. If there is more data on the stream, then discard all. Returns null if the query has empty result. You can pass an array as second parameter to execute the query as prepared statement, where the array contains the parameter values. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared statement parameters. If not provided (or null), then a normal query is executed, instead of a prepared statement. See the 'Query' method for more information about the parameter values.<br><strong>@return</strong> <em>string[] -or- null</em> |
 | <strong>Command</strong> | Send a 'command' to MonetDB. Commands are used for configuring the database, for example setting the maximal response size.<br><br><strong>@param</strong> <em>string</em> <strong>$command</strong><br><strong>@return</strong> <em>Response</em> |
-| <strong>Escape</strong> | Escape a string value, to be inserted into a query, inside single quotes. SECURITY WARNING: This library forces the use of multi-byte support and UTF-8 encoding, which is also used by MonetDB, avoiding the SQL-insertion attacks, which play with conversions between character encodings. This function uses the 'addcslashes' function of PHP, which is based on C-style escaping, like MonetDB. But even with these two precautionary measures, full security cannot be guaranteed. It's better if one never trusts security on MonetDB. Use it only for data analysis, but don't use it for authentication or session management, etc. Non-authenticated users should never have the opportunity to execute parameterized queries with it, and never run the server as root.<br><br><strong>@param</strong> <em>string</em> <strong>$value</strong><br><strong>@return</strong> <em>string</em> |
+| <strong>Escape</strong> | Escape a string value, to be inserted into a query, inside single quotes. SECURITY WARNING: Currently no successful SQL-injection attacks are known, but this function was implemented without full knowledge of the parsing algorithm on the server side, therefore it cannot be trusted comletely. Use this library only for data analysis, but don't use it for authentication or session management, etc. Non-authenticated users should never have the opportunity to execute parameterized queries with it, and never run the server as root. As a security measure this library forces the use of multi-byte support and UTF-8 encoding, which is also used by MonetDB, avoiding the SQL-insertion attacks, which play with differences between character encodings. The following characters are escaped by this method: backslash, single quote, carriage return, line feed, tabulator, null character, CTRL+Z.<br><br><strong>@param</strong> <em>string</em> <strong>$value</strong><br><strong>@return</strong> <em>string</em> |
 | <strong>ClearPsCache</strong> | Clears the in-memory cache of prepared statements. This is called automatically when an error is received from MonetDB, because that also purges the prepared statements and all session state in this case. |
 
 <hr><br>
