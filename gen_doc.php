@@ -22,9 +22,9 @@
 */
 
 $parse_files = [
-    "MonetDB-PHP-Deux/src/Connection.php",
-    "MonetDB-PHP-Deux/src/Response.php",
-    "MonetDB-PHP-Deux/src/StatusRecord.php",
+    "src/Connection.php",
+    "src/Response.php",
+    "src/StatusRecord.php",
 ];
 
 $target_file = "README.md";
