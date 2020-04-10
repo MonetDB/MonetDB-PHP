@@ -321,7 +321,16 @@ class Connection {
             $this->Write("s{$sql}\n;");
         }
         
-        return $this->inputStream->ReceiveResponse();
+        try {
+            return $this->inputStream->ReceiveResponse();
+        } catch (MonetException $ex) {
+            if (stripos($ex->getMessage(), "No prepared statement with id") !== false) {
+                throw new MonetException("When using query parameters (prepared statements), it is only allowed to"
+                    ."have a single query in the SQL block. Multiple passed or syntax error.");
+            }
+            
+            throw $ex;
+        }
     }
 
     /**
@@ -348,7 +357,17 @@ class Connection {
             $this->Write("s{$sql}\n;");
         }
     
-        $response = $this->inputStream->ReceiveResponse();
+        try {
+            $response = $this->inputStream->ReceiveResponse();
+        } catch (MonetException $ex) {
+            if (stripos($ex->getMessage(), "No prepared statement with id") !== false) {
+                throw new MonetException("When using query parameters (prepared statements), it is only allowed to"
+                    ."have a single query in the SQL block. Multiple passed or syntax error.");
+            }
+            
+            throw $ex;
+        }
+
         $row = $response->Fetch();
         if (!$response->IsDiscarded()) {
             $response->Discard();
@@ -412,8 +431,8 @@ class Connection {
         if (!isset($this->preparedStatements[$queryHash])) {
             $this->Write("sPREPARE ".rtrim($sql, "\r\n\t ;")."\n;");
             $response = $this->inputStream->ReceiveResponse();
-            $status = $response->GetStatusRecords()[0];
-            $this->preparedStatements[$queryHash] = $status->GetPreparedStatementID();
+            $stats = $response->GetStatusRecords()[0];
+            $this->preparedStatements[$queryHash] = $stats->GetPreparedStatementID();
 
             $response->Discard();
         }

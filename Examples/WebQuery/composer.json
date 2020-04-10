@@ -1,6 +1,6 @@
 {
-    "name": "tbolner/monetdb-php-deux-example-modify",
-    "description": "An example application for data modification.",
+    "name": "tbolner/monetdb-php-deux-example-web",
+    "description": "An example application for web queries.",
     "keywords": [
         "MonetDB",
         "columnar",

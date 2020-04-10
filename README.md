@@ -22,6 +22,9 @@ Main features:
   - [Example 4: Using escaping](#example-4-using-escaping)
   - [Example 5: Renaming fields](#example-5-renaming-fields)
   - [Example 6: Query the first record only](#example-6-query-the-first-record-only)
+  - [Example 7: Transactions](#example-7-transactions)
+  - [Example 8: Importing data the fastest way](#example-8-importing-data-the-fastest-way)
+  - [Example 9: Using multiple connections](#example-9-using-multiple-connections)
 - [API Reference](#api-reference)
   - [Connection Class](#connection-class)
   - [Response Class](#response-class)
@@ -47,6 +50,8 @@ Or add the following line to your `composer.json` file's `require` section:
 
 # Examples
 
+Example projects:
+
 - [Data modification](Examples/DataModification/)
 - [Web query](Examples/WebQuery/)
 
@@ -64,6 +69,8 @@ $result = $connection->Query('
     from
         cats
 ');
+
+$columnNames = $result->GetColumnNames();
 
 foreach($result as $record) {
     echo "Name: {$record["name"]}\n";
@@ -109,14 +116,16 @@ $result = $connection->Query('
     where
         "name" = ?
         and "weight_kg" > ?
-    EOF
+    limit
+        10
 ', [ "D'artagnan", 5.3 ]);
 ```
 
 ## Example 4: Using escaping
 
 ```php
-$value = $connection->Escape("D'artagnan");
+$name = $connection->Escape("D'artagnan");
+$weight = floatval("5.3");
 
 $result = $connection->Query(<<<EOF
     select
@@ -124,7 +133,8 @@ $result = $connection->Query(<<<EOF
     from
         "cats"
     where
-        "name" = '{$value}'
+        "name" = '{$name}'
+        and "weight_kg" > {$weight}
 EOF
 );
 ```
@@ -162,6 +172,86 @@ $record = $connection->QueryFirst('
 ');
 
 echo "Sum: {$record["weight"]}\n";
+```
+
+## Example 7: Transactions
+
+```php
+$connection->Query(<<<EOF
+    start transaction;
+
+    update
+        "cats"
+    set
+        "weight_kg" = 9.2
+    where
+        "name" = 'Ginger';
+    
+    insert into
+        "cats"
+        ("name", "weight_kg", "category", "birth_date", "net_worth_usd")
+    values
+        ('Mew', 8.2, 'shorthair', '2015-03-11', 1250000);
+    
+    commit;
+EOF
+);
+```
+
+Or:
+
+```php
+$connection->Query('start transaction');
+
+$connection->Query(<<<EOF
+    update
+        "cats"
+    set
+        "weight_kg" = 9.2
+    where
+        "name" = 'Ginger'
+EOF
+);
+
+$connection->Query(<<<EOF
+    insert into
+        "cats"
+        ("name", "weight_kg", "category", "birth_date", "net_worth_usd")
+    values
+        ('Mew', 8.2, 'shorthair', '2015-03-11', 1250000)
+EOF
+);
+
+$connection->Query('commit');
+```
+
+## Example 8: Importing data the fastest way
+
+```php
+$connection->Query(<<<EOF
+    copy offset 2 into cats
+    from
+        '/home/meow/cats.csv'
+        ("name", "weight_kg", "category", "birth_date", "net_worth_usd")
+    delimiters ',', '\n', '"'
+    NULL as '';
+EOF
+);
+```
+
+## Example 9: Using multiple connections
+
+```php
+$connection1 = new Connection("127.0.0.1", 50000,
+    "monetdb", "monetdb", "myDatabase");
+$connection2 = new Connection("127.0.0.1", 50000,
+    "monetdb", "monetdb", "myDatabase");
+$connection3 = new Connection("127.0.0.1", 50000,
+    "monetdb", "monetdb", "myDatabase");
+
+$result1 = $connection1->Query("...");
+$result2 = $connection2->Query("...");
+$result3 = $connection3->Query("...");
 ```
 
 <hr><br>

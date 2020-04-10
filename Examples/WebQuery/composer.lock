@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f8455d8963c315076d924a502b2df9d2",
+    "content-hash": "f0affcd68cba4b932efcb3af47b86ea0",
     "packages": [
         {
             "name": "tbolner/monetdb-php-deux",

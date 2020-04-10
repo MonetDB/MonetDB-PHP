@@ -14,3 +14,21 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
+
+namespace Program;
+
+use Example\Application;
+use MonetDB\MonetException;
+
+mb_internal_encoding("UTF-8");
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
+
+require((__DIR__)."/../vendor/autoload.php");
+
+try {
+    $app = new Application();
+    $app->Run($_GET);
+} catch(MonetException $ex) {
+    echo "\n{$ex->getMessage()}\n";
+}
