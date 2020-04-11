@@ -34,6 +34,17 @@ class InputStream {
     const Q_PREPARE = "5";  	// Creating a prepared statement
     const Q_BLOCK = "6";        // Continuation of a table, without a header
 
+    /*
+        Constraints, received at the beginning of the
+        messages of the server. (Or as a complete messsage: prompt)
+    */
+    const MSG_REDIRECT = '^';
+    const MSG_QUERY = '&';
+    const MSG_SCHEMA_HEADER = '%';
+    const MSG_INFO = '!';
+    const MSG_TUPLE = '[';
+    const MSG_PROMPT = '';
+    
     /**
      * The related connection
      *
@@ -49,68 +60,19 @@ class InputStream {
     private $socket;
 
     /**
-     * An array of the packets. They get immediately removed after their
-     * contents got parsed.
-     * This array is always naturally indexed: [0, 1, 2 ... n]
+     * An array containing the lines in the current
+     * response.
      *
      * @var string[]
      */
-    private $packets;
+    private $response_lines;
 
     /**
-     * When reading a packet, it's possible to read the
-     * beginning of the next one. In case that happens
-     * the raw data gets into this propery, including
-     * the header. Otherwise the value of this property
-     * is null.
-     *
-     * @var string|null
-     */
-    private $remainder;
-
-    /**
-     * A response is composed of one or more packets, where
-     * the last packet has a special bit set.
-     * When that last bit is detected, this field is set to true.
-     *
-     * @var bool
-     */
-    private $responseEnded;
-
-    /**
-     * This tells in which packet the cursor
-     * is located. The cursor tells what to
-     * respond next time to the user.
+     * The index of the current line.
      *
      * @var int
      */
-    private $cursor_packet_index;
-
-    /**
-     * This tells the character position of
-     * the cursor, inside that packet that
-     * is selected by "cursor_packet_index".
-     *
-     * @var int
-     */
-    private $cursor_position;
-
-    /**
-     * The index of the first packet in the buffer.
-     * This will be removed fist.
-     *
-     * @var int
-     */
-    private $first_packet_index;
-
-    /**
-     * The index of the last packet in the buffer.
-     * Used for data manipulation and checking
-     * for iteration end condition.
-     *
-     * @var int
-     */
-    private $last_packet_index;
+    private $line_cursor;
 
     /**
      * This tracks the response object, which was last returned to
@@ -134,14 +96,9 @@ class InputStream {
     {
         $this->connection = $connection;
         $this->socket = $socket;
-        $this->packets = [];
         $this->response = null;
-        $this->remainder = null;
-        $this->responseEnded = false;
-        $this->cursor_packet_index = 0;
-        $this->cursor_position = 0;
-        $this->first_packet_index = 0;
-        $this->last_packet_index = -1;
+        $this->response_lines = null;
+        $this->line_cursor = 0;
     }
 
     /**
@@ -149,116 +106,58 @@ class InputStream {
      * the last packet has a special bit set.
      * Read one for each call to this method until that's
      * reached.
-     * This method can add multiple packets to the buffer.
+     * This method adds exactly one packet to the packet
+     * buffer, or waits.
      *
      * @param bool $discard If true, then don't store the pack in
      * the buffer, just discard them.
      * @return void
      */
-    private function ReadNextPacket(bool $discard = false) {
-        if ($this->responseEnded) {
-            throw new MonetException("Internal error. Tried to call ReadNextPacket() on a response that has ended already.");
-        }
-
-        /*
-            The size in the packet header means the UTF-8 character count and
-            not the byte count. See the 'utf8strlen(...)' function usage here:
-                - https://github.com/MonetDB/MonetDB/blob/master/clients/mapiclient/mclient.c
-        */
-        $characters_read = 0;
-        $size = null;
-        $packet = "";
-
-        /*
-            This is done for the very rare case when a
-            single byte remained from a previous package
-            reading operation. At least the first 2 bytes
-            are required to determine the data length.
-        */
-        $fragment = null;
-        if ($this->remainder !== null) {
-            if (mb_strlen($this->remainder, '8bit') < 2) {
-                $fragment = $this->remainder;
-                $this->remainder = null;
-            }
-        }
+    public function LoadNextResponse(bool $discard = false) {
+        $packets = [];
 
         do {
-            if ($this->remainder === null) {
-                /*
-                    Do not use the character count in the max length parameter of "socket_read"
-                    when polling for the data, because that parameter expects byte count,
-                    and not UTF-8 character count. Use instead the maximal theoretical
-                    size of a packet: 32768 + 2
-                */
-                $rawData = socket_read($this->socket, 32770, PHP_BINARY_READ);
-                if ($rawData === false) {
-                    throw new MonetException("Connection to server lost. Received error: "
-                        .socket_strerror(socket_last_error()));
-                }
-
-                /*
-                    Add the single byte (see above)
-                */
-                if ($fragment != null) {
-                    $rawData = $fragment.$rawData;
-                    $fragment = null;
-                }
-            } else {
-                $rawData = $this->remainder;
-                $this->remainder = null;                
+            $header = $this->SocketReadExact(2);
+            $unpacked = unpack("vshort", $header);
+            if ($unpacked === false) {
+                throw new MonetException("Connection to server lost. (invalid header)");
             }
 
-            /*
-                If the size hasn't been parsed out of the header
-                yet, then do it.
-            */
-            if ($size == null) {
-                $unpacked = unpack("vshort", $rawData);
-                if ($unpacked === false) {
-                    throw new MonetException("Connection to server lost. (invalid header)");
-                }
+            $short = $unpacked["short"];
+            $size = $short >> 1;
+            if ($size > 0) {
+                $packet = $this->SocketReadExact($short >> 1);
+                $packets[] = $packet;
+            }
+        } while(!($short & 1));
+        
+        $this->response_lines = \mb_split("\n", implode($packets));
+        $this->line_cursor = 0;
+    }
 
-                $short = $unpacked["short"];
-                if ($short & 1) {
-                    $this->responseEnded = true;
-                }
+    /**
+     * Reads the exact amount of the data from the
+     * socket as requested.
+     *
+     * @param integer $length
+     * @return string
+     */
+    private function SocketReadExact(int $length): string {
+        $read = 0;
+        $parts = [];
 
-                $size = $short >> 1;
-                $packet = mb_substr($rawData, 2, null, '8bit');
-            } else {
-                $packet = $rawData;
+        do {
+            $rawData = socket_read($this->socket, $length - $read, PHP_BINARY_READ);
+            if ($rawData === false) {
+                throw new MonetException("Connection to server lost. Received error: "
+                    .socket_strerror(socket_last_error()));
             }
 
-            /*
-                Check for the ending condition
-            */
-            $characters_read += strlen($packet);
-            if (!$discard) {
-                $this->packets[++$this->last_packet_index] = $packet;
-            }
-            
-            if (defined("MonetDB-PHP-Deux-DEBUG")) {
-                echo "IN:\n".addcslashes($packet, "\"'\\\r\n\t")."\n";
-            }
-        } while ($characters_read < $size);
+            $parts[] = $rawData;
+            $read += strlen($rawData);
+        } while ($read < $length);
 
-        /*
-            In case the beginning of the next packet is read, put that into
-            the remainder field.
-        */
-        if ($characters_read > $size) {
-            $remainder_length = $characters_read - $size;
-            $last_packet_length = strlen($packet) - $remainder_length;
-            $this->remainder = substr($packet, $last_packet_length);
-
-            // Remove it from last packet
-            if (!$discard) {
-                $this->packets[$this->last_packet_index] = substr($packet, 0, $last_packet_length);
-            }
-        } else {
-            $this->remainder = null;
-        }
+        return implode($parts);
     }
 
     /**
@@ -267,46 +166,33 @@ class InputStream {
      * @return ServerChallenge
      */
     public function GetServerChallenge(): ServerChallenge {
+        $this->LoadNextResponse();
+
         return new ServerChallenge(
-            $this->ReadFullResponse()
+            $this->ReadNextLine()
         );
     }
 
     /**
-     * Reads a complete string response from the server.
-     * Use this only when you expect a smaller message.
+     * Reads a line from the server.
+     * Returns MSG_PROMPT if the message ended.
      *
      * @return string
      */
-    public function ReadFullResponse(): string
+    public function ReadNextLine(): string
     {
-        while(!$this->responseEnded) {
-            $this->ReadNextPacket();
+        if (!isset($this->response_lines[$this->line_cursor])) {
+            return Connection::MSG_PROMPT;
         }
+        
+        $line = $this->response_lines[$this->line_cursor];
+        $this->line_cursor++;
 
-        $response = implode($this->packets);
-        $this->Discard();
-
-        return $response;
-    }
-
-    /**
-     * Make sure that the user won't mess up the one and only TCP stream.
-     */
-    private function CheckIfOldResponseDiscarded() {
-        if ($this->response !== null) {
-            if (!$this->response->IsDiscarded()) {
-                throw new MonetException("You tried to start a new query before reading through "
-                    ."the previous one. If you wish to avoid this problem in the future, then there "
-                    ."are three solutions.\nFirst, you can call the 'Discard()' method on the "
-                    ."'Response' object, which reads through the data and discards all.\nSecond, "
-                    ."if you wish to execute multiple queries in parallel, then you have to "
-                    ."create multiple instances of the 'Connection' class for them.\nThird, if you "
-                    ."would not like to use multiple parallel connections and neither want to read "
-                    ."through a voluminous response, then you can close the current connection and "
-                    ."create a new one.\n");
-            }
+        if (defined("MonetDB-PHP-Deux-DEBUG")) {
+            echo "IN LINE:\n".$this->connection->Escape($line)."\n";
         }
+        
+        return $line;
     }
 
     /**
@@ -316,114 +202,8 @@ class InputStream {
      * @return Response
      */
     public function ReceiveResponse(): Response {
-        $this->CheckIfOldResponseDiscarded();
-
         $this->response = new Response($this->connection, $this);
         return $this->response;
-    }
-
-    /**
-     * Reads the data either until the first occurance of the
-     * given string, or until the end of the message is reached.
-     * Removes the returned data from the packet buffer.
-     *
-     * @param string $until
-     * @return string
-     */
-    public function ReadUntilString(string $until): string {
-        $pos = false;
-        $cursor = $this->cursor_packet_index - 1;
-        $start_pos = $this->cursor_position;
-
-        do {
-            $cursor++;
-            if (!isset($this->packets[$cursor])) {
-                /*
-                    This can add multiple packets (But at least one)
-                    It won't add packets from a next message. Those are put into
-                    the "remainder" field.
-                    If responseEnded==true, then it ended at the last packet.
-                */
-                $this->ReadNextPacket();
-            }
-
-            $pos = strpos($this->packets[$cursor], $until, $start_pos);
-            $start_pos = 0;
-        } while (
-            $pos === false
-            && (!$this->responseEnded || $cursor < $this->last_packet_index)
-        );
-
-        if ($pos === false) {
-            /*
-                Not found.
-                The cursor has to be on the last packet.
-                Move the position to the end of it, to include
-                everything.
-            */
-            $pos = max(strlen($this->packets[$cursor]) - 1, 0);
-        }
-
-        /*
-            The terminating string has been found in a packet.
-        */
-        if ($this->cursor_packet_index == $cursor) {
-            /*
-                We are still in the same packet
-            */
-            $response = substr(
-                $this->packets[$cursor],
-                $this->cursor_position,
-                $pos - $this->cursor_position + 1
-            );
-
-            $this->cursor_position = $pos + 1;
-        } else if ($this->cursor_packet_index + 1 == $cursor) {
-            /*
-                We moved 1 packet forward. They are neighboring.
-            */
-            $response = substr(
-                $this->packets[$this->cursor_packet_index],
-                $this->cursor_position
-            ).substr(
-                $this->packets[$cursor],
-                0,
-                $pos + 1
-            );
-
-            $this->cursor_position = $pos + 1;
-            unset($this->packets[$this->cursor_packet_index]);
-            $this->cursor_packet_index++;
-        } else {
-            /*
-                There are intermediate packets between the
-                start and the endpoint.
-            */
-            $parts = [];
-
-            $parts[] = substr(
-                $this->packets[$this->cursor_packet_index],
-                $this->cursor_position
-            );
-            unset($this->packets[$this->cursor_packet_index]);
-
-            for($i = $this->cursor_packet_index + 1; $i < $cursor; $i++) {
-                $parts[] = $this->packets[$i];
-                unset($this->packets[$i]);
-            }
-
-            $parts[] = substr(
-                $this->packets[$cursor],
-                0,
-                $pos + 1
-            );
-
-            $response = implode($parts);
-            $this->cursor_position = $pos + 1;
-            $this->cursor_packet_index = $cursor;
-        }
-
-        return $response;
     }
 
     /**
@@ -438,7 +218,7 @@ class InputStream {
     public static function IsResponse(string $response, string $type, string $beginning = ""): bool {
         $msg = $type.$beginning;
 
-        return substr($response, 0, strlen($msg)) === $msg;
+        return mb_substr($response, 0, mb_strlen($msg)) === $msg;
     }
 
     /**
@@ -454,48 +234,5 @@ class InputStream {
      */
     public function GetCurrentResponse(): ?Response {
         return $this->response;
-    }
-
-    /**
-     * Read and discard all data from the current message.
-     * Reset the state of the stream. (Except remainder.)
-     */
-    public function Discard() {
-        while (!$this->responseEnded) {
-            $this->ReadNextPacket(true);
-        }
-
-        if ($this->response !== null) {
-            $currentResponse = $this->response;
-            $this->response = null; // To avoid the callback
-            $currentResponse->Discard();
-        }
-        
-        $this->packets = [];
-        $this->response = null;
-        $this->responseEnded = false;
-        $this->cursor_packet_index = 0;
-        $this->cursor_position = 0;
-        $this->first_packet_index = 0;
-        $this->last_packet_index = -1;
-    }
-
-    /**
-     * Returns true if the response has ended, and there's
-     * no more unprocessed data in the buffer, false otherwise.
-     *
-     * @return boolean
-     */
-    public function EOF(): bool {
-        if (!$this->responseEnded) {
-            return false;
-        }
-
-        if (count($this->packets) < 1) {
-            return true;
-        }
-
-        return $this->cursor_packet_index >= $this->last_packet_index
-            && $this->cursor_position >= strlen($this->packets[$this->last_packet_index]);
     }
 }

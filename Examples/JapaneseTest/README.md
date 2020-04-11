@@ -1,7 +1,7 @@
-Data modification example
-=========================
+Japanese characters test
+========================
 
-This is an example project for MonetDB-PHP-Deux.
+This application executes an extensive UTF-8 test using Japanese characters.
 
 Steps:
 

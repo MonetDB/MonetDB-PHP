@@ -30,17 +30,6 @@ class Connection {
      */
     private const MAX_PACKET_SIZE = 8190;
 
-    /*
-        Constraints, received at the beginning of the
-        messages of the server. (Or as a complete messsage: prompt)
-    */
-    const MSG_REDIRECT = '^';
-    const MSG_QUERY = '&';
-    const MSG_SCHEMA_HEADER = '%';
-    const MSG_INFO = '!';
-    const MSG_TUPLE = '[';
-    const MSG_PROMPT = '';
-
     /**
      * DB server host name
      *
@@ -110,6 +99,13 @@ class Connection {
     private $preparedStatements;
 
     /**
+     * The maximal number of tuples returned in a response.
+     *
+     * @var int
+     */
+    private $maxReplySize;
+
+    /**
      * Create a new connection to a MonetDB database.
      * 
      * @param string $host The host of the database. Use '127.0.0.1' if the DB is on the same machine.
@@ -127,12 +123,13 @@ class Connection {
      * avoid configuring the server, but that might have a default for it.
      */
     function __construct(string $host, int $port, string $user, string $password, string $database,
-            string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, ?int $maxReplySize = 1000000) {
+            string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, ?int $maxReplySize = 200) {
         
-        if (mb_internal_encoding() !== "UTF-8") {
+        if (mb_internal_encoding() !== "UTF-8" || mb_regex_encoding() !== "UTF-8") {
             throw new Exception("For security reasons, this library is only allowed to be used in "
                 ."PHP environments in which the multi-byte support is enabled and the default "
-                ."character set is 'UTF-8'. See: https://www.php.net/manual/en/function.mb-internal-encoding.php");
+                ."character set is 'UTF-8'. Please set both of these: mb_internal_encoding('UTF-8'); "
+                ."mb_regex_encoding('UTF-8');");
         }
 
         $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
@@ -152,6 +149,7 @@ class Connection {
         $this->password = trim($password);
         $this->database = trim($database);
         $this->saltedHashAlgo = strtolower(trim($saltedHashAlgo));
+        $this->maxReplySize = $maxReplySize;
 
         $this->inputStream = new InputStream($this, $this->socket);
 
@@ -173,7 +171,7 @@ class Connection {
             in a response.
         */
         if ($maxReplySize !== null) {
-            $this->Command("reply_size {$maxReplySize}");
+            $this->Command("reply_size {$maxReplySize}", false);
         }
     }
 
@@ -184,13 +182,15 @@ class Connection {
     private function Authenticate() {
         for ($i = 0; $i < 10; $i++) {
             $challenge = $this->inputStream->GetServerChallenge();
+            
             $pwHash = $challenge->HashPassword($this->password, $this->saltedHashAlgo);
             $upperSaltHash = strtoupper($this->saltedHashAlgo);
 
             $this->Write("BIG:{$this->user}:{{$upperSaltHash}}{$pwHash}:sql:{$this->database}:");
             
-            $inputStream = $this->inputStream->ReadFullResponse();
-            if (InputStream::IsResponse($inputStream, self::MSG_REDIRECT, "mapi:merovingian:")) {
+            $this->inputStream->LoadNextResponse();
+            $inputStream = $this->inputStream->ReadNextLine();
+            if (InputStream::IsResponse($inputStream, InputStream::MSG_REDIRECT, "mapi:merovingian:")) {
                 /*
                     Only the main process of MonetDB opens ports to listen on, and it spawns
                     separate sub-processes for each database.
@@ -203,12 +203,12 @@ class Connection {
                 continue;
             }
 
-            if ($inputStream == self::MSG_PROMPT) {
+            if ($inputStream == InputStream::MSG_PROMPT) {
                 // Successful authentication (received an empty string as a prompt)
                 return;
             }
 
-            if (InputStream::IsResponse($inputStream, self::MSG_INFO, "InvalidCredentialsException:")) {
+            if (InputStream::IsResponse($inputStream, InputStream::MSG_INFO, "InvalidCredentialsException:")) {
                 throw(new MonetException("Authentication Failed. Invalid credentials."));
             }
 
@@ -264,8 +264,8 @@ class Connection {
             $chunk = pack("v", $header).$chunk;
 
             do {
-                $inputStream = socket_write($this->socket, $chunk);
-                if ($inputStream === false) {
+                $written = socket_write($this->socket, $chunk);
+                if ($written === false) {
                     throw new MonetException("Unable to send data to server. Connection lost. Received error: "
                         .socket_strerror(socket_last_error()));
                 }
@@ -275,7 +275,7 @@ class Connection {
                     out all of the data. It returns the number of
                     bytes it has actually transmitted.
                 */
-                if ($inputStream === 0) {
+                if ($written === 0) {
                     /*
                         No bytes have been written, which probably means that the
                         server has a high load. Sleep 100 ms before continue.
@@ -284,12 +284,12 @@ class Connection {
                     continue;
                 }
 
-                $chunk = mb_substr($chunk, $inputStream, null, '8bit');
+                $chunk = substr($chunk, $written);
             } while(strlen($chunk) > 0);
         }
 
         if (defined("MonetDB-PHP-Deux-DEBUG")) {
-            echo "OUT:\n".str_replace("\n", " ", trim($msg))."\n";
+            echo "OUT:\n".$this->Escape($msg)."\n";
         }
     }
 
@@ -386,11 +386,16 @@ class Connection {
      * maximal response size.
      *
      * @param string $command
-     * @return Response
+     * @param bool $noResponse If true, then returns NULL and makes
+     * no read to the underlying socket.
+     * @return Response|null
      */
-    public function Command(string $command): Response
+    public function Command(string $command, bool $noResponse = true): ?Response
     {
         $this->Write("X{$command}");
+        if ($noResponse) {
+            return null;
+        }
     
         return $this->inputStream->ReceiveResponse();
     }
@@ -419,7 +424,27 @@ class Connection {
      * @return string
      */
     public function Escape(string $value): string {
-        return addcslashes($value, "\\'\r\n\t\0\x1a");
+        /*
+            - Don't use addcslashes, because that doesn't know about UTF-8
+            - See: https://stackoverflow.com/a/3666326/6630230
+        */
+        $charArray = preg_split('//u', $value, -1, PREG_SPLIT_NO_EMPTY);
+        $result = [];
+
+        foreach($charArray as $c) {
+            switch($c) {
+                case "\\": $result[] = "\\\\"; break;
+                case "'": $result[] = "\\'"; break;
+                case "\r": $result[] = "\\r"; break;
+                case "\n": $result[] = "\\n"; break;
+                case "\t": $result[] = "\\t"; break;
+                case "\0": $result[] = "\\0"; break;
+                case "\x1a": $result[] = "\\032"; break;
+                default: $result[] = $c;
+            }
+        }
+
+        return implode($result);
     }
 
     /**
@@ -453,7 +478,7 @@ class Connection {
             else if ($param === false) {
                 $escaped[] = "false";
             }
-            elseif (is_numeric($param)) {
+            elseif (is_numeric($param) && !is_string($param)) {
                 $escaped[] = $param + 0;
             } else {
                 $escaped[] = "'".$this->Escape((string)$param)."'";
@@ -472,5 +497,15 @@ class Connection {
      */
     public function ClearPsCache() {
         $this->preparedStatements = [];
+    }
+
+    /**
+     * The maximal number of tuples returned in a response.
+     *
+     * @return int
+     */
+    public function GetMaxReplySize(): int
+    {
+        return $this->maxReplySize;
     }
 }

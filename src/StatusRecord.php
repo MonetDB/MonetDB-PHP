@@ -42,6 +42,12 @@ class StatusRecord {
     private $queryTypeDescription = null;
 
     /**
+     * The ID of the query, which can be used for
+     * resuming it, using the "export" command.
+     */
+    private $queryID = null;
+
+    /**
      * The time the server spent on executing
      * the query. In milliseconds.
      *
@@ -95,9 +101,16 @@ class StatusRecord {
             $this->queryType = "table";
             $this->queryTypeDescription = "Select query";
             $fields = $this->ParseFields($line, 8);
+            $this->queryID = (int)$fields[0];
             $this->rowCount = (int)$fields[1];
             $this->executionTime = $fields[4] / 1000;
             $this->queryParsingTime = $fields[5] / 1000;
+        } else if ($queryType == InputStream::Q_BLOCK) {
+            $this->queryType = "block";
+            $this->queryTypeDescription = "Continue a select query";
+            $fields = $this->ParseFields($line, 4);
+            $this->queryID = (int)$fields[0];
+            $this->rowCount = (int)$fields[2];
         } else if ($queryType == InputStream::Q_CREATE) {
             $this->queryType = "schema";
             $this->queryTypeDescription = "Modify schema";
@@ -272,5 +285,15 @@ class StatusRecord {
      */
     public function GetPreparedStatementID(): ?int {
         return $this->preparedStatementID;
+    }
+
+    /**
+     * Returns the ID of the query response that
+     * is returned in the result set.
+     *
+     * @return integer|null
+     */
+    public function GetQueryID(): ?int {
+        return $this->queryID;
     }
 }

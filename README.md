@@ -4,9 +4,9 @@ MonetDB-PHP-Deux
 A PHP client library for accessing MonetDB.
 
 Main features:
-- Parameterized queries, using prepared statements.
+- Parameterized queries, using cached prepared statements.
+- Extensively tested with Japanese characters for the UTF-8 compliance.
 - Multiple, concurrent connections.
-- Streaming data parsing. Low memory footprint.
 - Allows access to response stats, like execution time and affected row count, etc.
 - The thrown `MonetException` exception objects contain user-friendly error messages.
 
@@ -54,6 +54,7 @@ Example projects:
 
 - [Data modification](Examples/DataModification/)
 - [Web query](Examples/WebQuery/)
+- [Japanese test](Examples/JapaneseTest/)
 
 ## Example 1: Simple query
 
@@ -274,13 +275,14 @@ $result3 = $connection3->Query("...");
 
 | Method | Documentation |
 | --- | --- |
-| <strong>__construct</strong> | Create a new connection to a MonetDB database. <br><br><strong>@param</strong> <em>string</em> <strong>$host</strong> : The host of the database. Use '127.0.0.1' if the DB is on the same machine.<br><strong>@param</strong> <em>int</em> <strong>$port</strong> : The port of the database. For MonetDB this is usually 50000.<br><strong>@param</strong> <em>string</em> <strong>$user</strong> : The user name.<br><strong>@param</strong> <em>string</em> <strong>$password</strong> : The password of the user.<br><strong>@param</strong> <em>string</em> <strong>$database</strong> : The name of the datebase to connect. Don't forget to release and start it.<br><strong>@param</strong> <em>string</em> <strong>$saltedHashAlgo</strong> <em>= "SHA1"</em> : Optional. The preferred hash algorithm to be used for exchanging the password. It has to be supported by both the server and PHP. This is only used for the salted hashing. Another stronger algorithm is used first (usually SHA512).<br><strong>@param</strong> <em>bool</em> <strong>$syncTimeZone</strong> <em>= true</em> : If true, then tells the clients time zone offset to the server, which will convert all timestamps is case there's a difference. If false, then the timestamps will end up on the server unmodified.<br><strong>@param</strong> <em>?int</em> <strong>$maxReplySize</strong> <em>= 1000000</em> : The maximal number of tuples returned in a response. Set it to NULL to avoid configuring the server, but that might have a default for it. |
+| <strong>__construct</strong> | Create a new connection to a MonetDB database. <br><br><strong>@param</strong> <em>string</em> <strong>$host</strong> : The host of the database. Use '127.0.0.1' if the DB is on the same machine.<br><strong>@param</strong> <em>int</em> <strong>$port</strong> : The port of the database. For MonetDB this is usually 50000.<br><strong>@param</strong> <em>string</em> <strong>$user</strong> : The user name.<br><strong>@param</strong> <em>string</em> <strong>$password</strong> : The password of the user.<br><strong>@param</strong> <em>string</em> <strong>$database</strong> : The name of the datebase to connect. Don't forget to release and start it.<br><strong>@param</strong> <em>string</em> <strong>$saltedHashAlgo</strong> <em>= "SHA1"</em> : Optional. The preferred hash algorithm to be used for exchanging the password. It has to be supported by both the server and PHP. This is only used for the salted hashing. Another stronger algorithm is used first (usually SHA512).<br><strong>@param</strong> <em>bool</em> <strong>$syncTimeZone</strong> <em>= true</em> : If true, then tells the clients time zone offset to the server, which will convert all timestamps is case there's a difference. If false, then the timestamps will end up on the server unmodified.<br><strong>@param</strong> <em>?int</em> <strong>$maxReplySize</strong> <em>= 200</em> : The maximal number of tuples returned in a response. Set it to NULL to avoid configuring the server, but that might have a default for it. |
 | <strong>Close</strong> | Close the connection |
 | <strong>Query</strong> | Execute an SQL query and return its response. For 'select' queries the response can be iterated using a 'foreach' statement. You can pass an array as second parameter to execute the query as prepared statement, where the array contains the parameter values. SECURITY WARNING: For prepared statements in MonetDB, the parameter values are passed in a regular 'EXECUTE' command, using escaping. Therefore the same security considerations apply here as for using the Connection->Escape(...) method. Please read the comments for that method. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared statement parameters. If not provided (or null), then a normal query is executed, instead of a prepared statement. The parameter values will retain their PHP type if possible. The following values won't be converted to string: null, true, false and numeric values.<br><strong>@return</strong> <em>Response</em> |
 | <strong>QueryFirst</strong> | Execute an SQL query and return only the first row as an associative array. If there is more data on the stream, then discard all. Returns null if the query has empty result. You can pass an array as second parameter to execute the query as prepared statement, where the array contains the parameter values. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared statement parameters. If not provided (or null), then a normal query is executed, instead of a prepared statement. See the 'Query' method for more information about the parameter values.<br><strong>@return</strong> <em>string[] -or- null</em> |
-| <strong>Command</strong> | Send a 'command' to MonetDB. Commands are used for configuring the database, for example setting the maximal response size.<br><br><strong>@param</strong> <em>string</em> <strong>$command</strong><br><strong>@return</strong> <em>Response</em> |
+| <strong>Command</strong> | Send a 'command' to MonetDB. Commands are used for configuring the database, for example setting the maximal response size.<br><br><strong>@param</strong> <em>string</em> <strong>$command</strong><br><strong>@param</strong> <em>bool</em> <strong>$noResponse</strong> <em>= true</em> : If true, then returns NULL and makes no read to the underlying socket.<br><strong>@return</strong> <em>Response -or- null</em> |
 | <strong>Escape</strong> | Escape a string value, to be inserted into a query, inside single quotes. SECURITY WARNING: Currently no successful SQL-injection attacks are known, but this function was implemented without full knowledge of the parsing algorithm on the server side, therefore it cannot be trusted comletely. Use this library only for data analysis, but don't use it for authentication or session management, etc. Non-authenticated users should never have the opportunity to execute parameterized queries with it, and never run the server as root. As a security measure this library forces the use of multi-byte support and UTF-8 encoding, which is also used by MonetDB, avoiding the SQL-insertion attacks, which play with differences between character encodings. The following characters are escaped by this method: backslash, single quote, carriage return, line feed, tabulator, null character, CTRL+Z.<br><br><strong>@param</strong> <em>string</em> <strong>$value</strong><br><strong>@return</strong> <em>string</em> |
 | <strong>ClearPsCache</strong> | Clears the in-memory cache of prepared statements. This is called automatically when an error is received from MonetDB, because that also purges the prepared statements and all session state in this case. |
+| <strong>GetMaxReplySize</strong> | The maximal number of tuples returned in a response.<br><br><strong>@return</strong> <em>int</em> |
 
 <hr><br>
 
@@ -312,6 +314,7 @@ $result3 = $connection3->Query("...");
 | <strong>GetRowCount</strong> | The number of rows in the response.<br><br><strong>@return</strong> <em>integer -or- null</em> |
 | <strong>GetAsText</strong> | Get a description of the status response in a human-readable format.<br><br><strong>@return</strong> <em>string</em> |
 | <strong>GetPreparedStatementID</strong> | Get the ID of a created prepared statement. This ID can be used in an 'EXECUTE' statement, but only in the same session.<br><br><strong>@return</strong> <em>integer -or- null</em> |
+| <strong>GetQueryID</strong> | Returns the ID of the query response that is returned in the result set.<br><br><strong>@return</strong> <em>integer -or- null</em> |
 
 <hr><br>
 

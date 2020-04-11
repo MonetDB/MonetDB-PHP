@@ -1,6 +1,6 @@
 {
-    "name": "tbolner/monetdb-php-deux",
-    "description": "A PHP client library for accessing MonetDB.",
+    "name": "tbolner/monetdb-php-deux-example-japanese",
+    "description": "Testing UTF-8 compatibility with Japanese characters.",
     "keywords": [
         "MonetDB",
         "columnar",
@@ -16,14 +16,15 @@
         }
     ],
     "license": "Apache-2.0",
-    "type": "library",
+    "type": "application",
     "require": {
         "php": ">=7.2",
-        "ext-mbstring": "*"
+        "ext-mbstring": "*",
+        "tbolner/monetdb-php-deux": "^1.0"
     },
     "autoload": {
         "psr-4": {
-            "MonetDB\\": "src/"
+            "Example\\": "src/"
         }
     }
 }
