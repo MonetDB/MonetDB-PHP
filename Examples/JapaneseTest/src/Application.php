@@ -72,21 +72,16 @@ class Application {
                 $values[] = (string)$value;
             }
 
-            try {
-                $connection->Query('
-                    insert into
-                        "TestTable"
-                        ("text1", "text2", "text3", "text4", "text5",
-                        "text6", "text7", "text8", "text9", "text10")
-                    values
-                        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ', $values);
+            $connection->Query('
+                insert into
+                    "TestTable"
+                    ("text1", "text2", "text3", "text4", "text5",
+                    "text6", "text7", "text8", "text9", "text10")
+                values
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ', $values);
 
-                $pushedRows++;
-            } catch (\Exception $ex) {
-                print_r($values);
-                throw $ex;
-            }
+            $pushedRows++;
         }
 
         echo "Pushed character count: {$pushedCharCount}\n";

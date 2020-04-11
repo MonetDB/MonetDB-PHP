@@ -119,11 +119,12 @@ class Connection {
      * @param bool $syncTimeZone If true, then tells the clients time zone offset to the server,
      * which will convert all timestamps is case there's a difference. If false, then the timestamps
      * will end up on the server unmodified.
-     * @param int $maxReplySize The maximal number of tuples returned in a response. Set it to NULL to
-     * avoid configuring the server, but that might have a default for it.
+     * @param int $maxReplySize The maximal number of tuples returned in a response. A higher value
+     * results in smaller number of memory allocations and string operations, but also in
+     * higher memory footprint.
      */
     function __construct(string $host, int $port, string $user, string $password, string $database,
-            string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, ?int $maxReplySize = 200) {
+            string $saltedHashAlgo = "SHA1", bool $syncTimeZone = true, int $maxReplySize = 200) {
         
         if (mb_internal_encoding() !== "UTF-8" || mb_regex_encoding() !== "UTF-8") {
             throw new Exception("For security reasons, this library is only allowed to be used in "
@@ -170,9 +171,12 @@ class Connection {
             Configure the maximal number of tuples returned
             in a response.
         */
-        if ($maxReplySize !== null) {
-            $this->Command("reply_size {$maxReplySize}", false);
+        if ($maxReplySize < 10) {
+            throw new MonetException("The 'maxReplySize' parameter value of the Connection "
+                ."class' constructor is too low. Please set it to at least 10.");
         }
+
+        $this->Command("reply_size {$maxReplySize}", false);
     }
 
     /**
