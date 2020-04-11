@@ -8,19 +8,20 @@
     "packages": [
         {
             "name": "tbolner/monetdb-php-deux",
-            "version": "1.0.1",
+            "version": "1.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/bolner/MonetDB-PHP-Deux.git",
-                "reference": "66d1fe2d5bce7a780b18c82d3b5d70be31842174"
+                "reference": "aaaf62a922564e76fa18fdcfe6ee380d733754f2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bolner/MonetDB-PHP-Deux/zipball/66d1fe2d5bce7a780b18c82d3b5d70be31842174",
-                "reference": "66d1fe2d5bce7a780b18c82d3b5d70be31842174",
+                "url": "https://api.github.com/repos/bolner/MonetDB-PHP-Deux/zipball/aaaf62a922564e76fa18fdcfe6ee380d733754f2",
+                "reference": "aaaf62a922564e76fa18fdcfe6ee380d733754f2",
                 "shasum": ""
             },
             "require": {
+                "ext-mbstring": "*",
                 "php": ">=7.2"
             },
             "type": "library",
@@ -48,7 +49,7 @@
                 "data-science",
                 "library"
             ],
-            "time": "2020-04-10T14:59:38+00:00"
+            "time": "2020-04-11T22:54:14+00:00"
         }
     ],
     "packages-dev": [],

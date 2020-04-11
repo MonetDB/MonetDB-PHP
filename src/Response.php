@@ -289,6 +289,7 @@ class Response implements \Iterator {
                     continue;
                 }
             } else if ($first == InputStream::MSG_INFO) {
+                $this->connection->ClearPsCache();
                 throw new MonetException("Error from MonetDB: ".substr($this->currentLine, 1));
             } else {
                 throw new MonetException("Invalid response from MonetDB:\n\n{$this->currentLine}\n");

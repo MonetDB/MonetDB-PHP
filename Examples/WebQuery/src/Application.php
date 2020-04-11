@@ -38,12 +38,12 @@ class Application {
 
         if (isset($args["min_weight"])) {
             $filterExp[] = 'weight_kg >= ?';
-            $filterValues[] = $args["min_weight"];
+            $filterValues[] = floatval($args["min_weight"]);
         }
 
         if (isset($args["max_weight"])) {
             $filterExp[] = 'weight_kg <= ?';
-            $filterValues[] = $args["max_weight"];
+            $filterValues[] = floatval($args["max_weight"]);
         }
 
         if (count($filterExp) < 1) {
