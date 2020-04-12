@@ -199,7 +199,7 @@ class StatusRecord {
 
     /**
      * The time it took to parse and optimize
-     * the query.
+     * the query. In milliseconds.
      *
      * @return float|null
      */

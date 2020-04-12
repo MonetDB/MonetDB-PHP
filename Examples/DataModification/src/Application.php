@@ -29,8 +29,6 @@ class Application {
             create schema "mySchema";
             set schema "mySchema";
 
-            drop table if exists "cats";
-
             create table "cats" (
                 "name" text,
                 "weight_kg" decimal(8, 2),

@@ -23,6 +23,7 @@ use MonetDB\Connection;
 class Application {
     /*
         Randomly placed special characters into the text.
+        Source: https://ja.wikipedia.org/wiki/%E3%81%9D%E3%82%8D%E3%81%B0%E3%82%93#%E6%97%A5%E6%9C%AC%E3%81%B8%E3%81%AE%E4%BC%9D%E6%9D%A5
         Can't test zero/null character \0, because MonetDB truncates the string there.
         (Can be reproduced on the console)
     */
@@ -37,20 +38,19 @@ class Application {
         $connection = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
         $sampleLength = mb_strlen(self::SAMPLE);
 
-        echo "Sample length: {$sampleLength} / Bytes: ".strlen(self::SAMPLE)."\n";
         /*
             Create schema
         */
         echo "Creating schema...\n";
 
-        $result = $connection->Query('
+        $connection->Query('
             drop schema if exists "JapaneseTest" cascade;
             create schema "JapaneseTest";
             set schema "JapaneseTest";
 
             create table "TestTable" (
-                "text1" text(900), "text2" text(900), "text3" text(900), "text4" text(900), "text5" text(900),
-                "text6" text(900), "text7" text(900), "text8" text(900), "text9" text(900), "text10" text(900)
+                "text1" text, "text2" text, "text3" text, "text4" text, "text5" text,
+                "text6" text, "text7" text, "text8" text, "text9" text, "text10" text
             );
         ');
 
@@ -87,6 +87,9 @@ class Application {
         echo "Pushed character count: {$pushedCharCount}\n";
         echo "Pushed rows: {$pushedRows}\n";
         
+        /*
+            Determine lengths through SQL queries
+        */
         $sum = $connection->QueryFirst('
             select
                 sum(length("text1") + length("text2") + length("text3") + length("text4") + length("text5") +
@@ -106,7 +109,10 @@ class Application {
 
         echo "SQL row count: {$rows["count"]}\n";
 
-        echo "Querying and counting characters...\n";
+        /*
+            Read back the data and calculate counts in PHP
+        */
+        echo "Querying data and counting characters in PHP...\n";
 
         $result = $connection->Query('
             select

@@ -119,7 +119,7 @@ class Response implements \Iterator {
     function __construct(Connection $connection, InputStream $inputStream)
     {
         $this->connection = $connection;
-        $this->columnNames = null;
+        $this->columnNames = [];
         $this->inputStream = $inputStream;
         $this->isDiscarded = false;
         $this->currentLine = null;

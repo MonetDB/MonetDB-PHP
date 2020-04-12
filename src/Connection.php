@@ -387,7 +387,8 @@ class Connection {
     /**
      * Send a 'command' to MonetDB. Commands are used for
      * configuring the database, for example setting the
-     * maximal response size.
+     * maximal response size, or for requesting unread
+     * parts of a query response ('export').
      *
      * @param string $command
      * @param bool $noResponse If true, then returns NULL and makes
@@ -410,7 +411,7 @@ class Connection {
      * Currently no successful SQL-injection attacks are known,
      * but this function was implemented without full knowledge
      * of the parsing algorithm on the server side, therefore
-     * it cannot be trusted comletely. Use this library
+     * it cannot be trusted completely. Use this library
      * only for data analysis, but don't use it for
      * authentication or session management, etc.
      * Non-authenticated users should never have the
@@ -418,7 +419,7 @@ class Connection {
      * it, and never run the server as root.
      * As a security measure this library forces the use of
      * multi-byte support and UTF-8 encoding, which is also
-     * used by MonetDB, avoiding the SQL-insertion attacks,
+     * used by MonetDB, avoiding the SQL-injection attacks,
      * which play with differences between character encodings.
      * The following characters are escaped by this method:
      * backslash, single quote, carriage return,
@@ -433,22 +434,20 @@ class Connection {
             - See: https://stackoverflow.com/a/3666326/6630230
         */
         $charArray = preg_split('//u', $value, -1, PREG_SPLIT_NO_EMPTY);
-        $result = [];
 
-        foreach($charArray as $c) {
+        foreach($charArray as &$c) {
             switch($c) {
-                case "\\": $result[] = "\\\\"; break;
-                case "'": $result[] = "\\'"; break;
-                case "\r": $result[] = "\\r"; break;
-                case "\n": $result[] = "\\n"; break;
-                case "\t": $result[] = "\\t"; break;
-                case "\0": $result[] = "\\0"; break;
-                case "\x1a": $result[] = "\\032"; break;
-                default: $result[] = $c;
+                case "\\": $c = "\\\\"; break;
+                case "'": $c = "\\'"; break;
+                case "\r": $c = "\\r"; break;
+                case "\n": $c = "\\n"; break;
+                case "\t": $c = "\\t"; break;
+                case "\0": $c = "\\0"; break;
+                case "\x1a": $c = "\\032"; break;
             }
         }
 
-        return implode($result);
+        return implode($charArray);
     }
 
     /**
