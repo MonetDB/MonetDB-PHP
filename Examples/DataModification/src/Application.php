@@ -93,14 +93,16 @@ EOF
                 "category"
         ');
 
+        echo "Columns:\n\n";
+
         foreach($result->GetColumnInfo() as $info) {
             echo "Table/resource name: {$info->GetTableName()}\n";
             echo "Field name: {$info->GetFieldName()}\n";
             echo "Type: {$info->GetType()}\n";
-            echo "Length: {$info->GetLength()}\n";
+            echo "Length: {$info->GetLength()}\n\n";
         }
 
-        echo "\n";
+        echo "Data:\n\n";
         foreach($result as $record) {
             echo "{$record["category"]} : Mean: {$record["weight_mean"]} kg, "
                 ."Median: {$record["weight_median"]} kg, "
