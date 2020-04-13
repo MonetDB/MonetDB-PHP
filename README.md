@@ -279,7 +279,7 @@ $result3 = $connection3->Query("...");
 | [Connection](#connection-class) | Class for encapsulating a connection to a MonetDB server. |
 | [Response](#response-class) | This class represents a response for an SQL query or for a command. In case of a 'select' query, this class can be iterated through, using a 'foreach' loop.  The records are returned as associative arrays, indexed by the column names. |
 | [StatusRecord](#statusrecord-class) | This class shares the information returned by MonetDB about the executed queries. Like execution time, number of rows affected, etc. Note that only specific fields are populated for specific queries, the others remain NULL. |
-| [ColumnInfo](#columninfo-class) | This class contains inforation about the columns of a table response to a 'select' query. |
+| [ColumnInfo](#columninfo-class) | This class contains information about the columns of a table response to a 'select' query. |
 
 <hr><br>
 
@@ -335,7 +335,7 @@ $result3 = $connection3->Query("...");
 
 ## ColumnInfo Class
 
-<em>This class contains inforation about the columns of a table response to a 'select' query.</em>
+<em>This class contains information about the columns of a table response to a 'select' query.</em>
 
 | Method | Documentation |
 | --- | --- |
