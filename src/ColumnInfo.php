@@ -18,7 +18,7 @@
 namespace MonetDB;
 
 /**
- * This class contains inforation about the columns of
+ * This class contains information about the columns of
  * a table response to a 'select' query.
  */
 class ColumnInfo {
