@@ -25,6 +25,8 @@ mb_regex_encoding("UTF-8");
 ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
+// define("MonetDB-PHP-Deux-DEBUG", 1);
+
 require((__DIR__)."/vendor/autoload.php");
 
 try {

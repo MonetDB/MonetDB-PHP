@@ -112,7 +112,7 @@ class Connection {
      * @param integer $port The port of the database. For MonetDB this is usually 50000.
      * @param string $user The user name.
      * @param string $password The password of the user.
-     * @param string $database The name of the datebase to connect. Don't forget to release and start it.
+     * @param string $database The name of the database to connect to. Don't forget to release and start it.
      * @param string $saltedHashAlgo Optional. The preferred hash algorithm to be used for exchanging the password.
      * It has to be supported by both the server and PHP. This is only used for the salted hashing.
      * Another stronger algorithm is used first (usually SHA512).
@@ -442,8 +442,12 @@ class Connection {
                 case "\r": $c = "\\r"; break;
                 case "\n": $c = "\\n"; break;
                 case "\t": $c = "\\t"; break;
-                case "\0": $c = "\\0"; break;
-                case "\x1a": $c = "\\032"; break;
+                /*
+                    Don't convert to "\\0", because that can
+                    fail if followed by an octal digit.
+                */
+                case "\0": $c = "\\000"; break;
+                case "\032": $c = "\\032"; break;
             }
         }
 

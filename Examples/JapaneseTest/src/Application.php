@@ -27,11 +27,11 @@ class Application {
         Can't test zero/null character \0, because MonetDB truncates the string there.
         (Can be reproduced on the console)
     */
-    const SAMPLE = "日本語の「そろばん」'は「算盤」の中国読み「スワンパン」が変化したものだといわれている。"
-        ."中国から日本に伝わった\"のがいつ頃か詳しいことは分かってい\x1aないが、少なくとも15世紀初頭には使用されていた[5]。"
-        ."『日本風土記\t』（1570年代）には「そおはん」と言'う表現でそろばんのことが記\x1aされており、その頃には日本に既に伝来し"
-        ."ていたことがうかがえる。なお使用できる状\"態でと言う限定ではあるが、'現存する日本最古のそろばんは前田利家所有のもの"
-        ."で尊経閣文庫に保存さ\nれている。近年は、黒田藩家臣久野重勝\rの家に伝来した'秀吉拝\"領の四兵衛重\"勝拝領算盤"
+    const SAMPLE = "日本語の「そろばん」は'「算盤」\nの中国読み'「スワンパン」が変化したものだといわれている。"
+        ."中国から日本に伝わったのがいつ頃か詳しいことは分かっ\tていないが、少なくとも15世紀初頭には使用されていた[5]。"
+        ."『日本風土記』（1570年代）には「そおはん」と言う表現でそろばんのことが記されており、その頃には日本に既に伝来し"
+        ."ていたことがうかがえる。\"なお使用できる状態でと\032言う限定ではあるが、\"現存する日本最古のそろばんは前田利家所有のもの"
+        ."で尊経閣文庫に保存されている。近年は、黒田藩家臣久野重\r勝の家に伝来した秀吉拝領の四兵衛重勝拝領算盤"
         ."というそろばんの方が古いという[6][7]。";
 
     public function Run(array $args) {
@@ -49,6 +49,7 @@ class Application {
             set schema "JapaneseTest";
 
             create table "TestTable" (
+                "id" int,
                 "text1" text, "text2" text, "text3" text, "text4" text, "text5" text,
                 "text6" text, "text7" text, "text8" text, "text9" text, "text10" text
             );
@@ -58,27 +59,30 @@ class Application {
             Pushing data to MonetDB (and escaping it)
         */
         echo "Pushing data to MonetDB...\n";
+        $dataCache = [];
         $pushedCharCount = 0;
         $pushedRows = 0;
 
         for($i = 0; $i < 1234; $i++) {
-            $values = [];
+            $values = [ $i + 1 ];
 
             for($j = 1; $j <= 10; $j++) {
                 $size = rand(0, $sampleLength);
                 $startPos = rand(0, $sampleLength - $size);
                 $value = mb_substr(self::SAMPLE, $startPos, $size);
                 $pushedCharCount += mb_strlen($value);
-                $values[] = (string)$value;
+                $values[] = $value;
+
+                $dataCache[$i + 1]["text{$j}"] = $value;
             }
 
             $connection->Query('
                 insert into
                     "TestTable"
-                    ("text1", "text2", "text3", "text4", "text5",
+                    ("id", "text1", "text2", "text3", "text4", "text5",
                     "text6", "text7", "text8", "text9", "text10")
                 values
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ', $values);
 
             $pushedRows++;
@@ -110,9 +114,9 @@ class Application {
         echo "SQL row count: {$rows["count"]}\n";
 
         /*
-            Read back the data and calculate counts in PHP
+            Read back the data, calculate counts and compare strings in PHP
         */
-        echo "Querying data and counting characters in PHP...\n";
+        echo "Querying and validating characters in PHP...\n";
 
         $result = $connection->Query('
             select
@@ -125,7 +129,15 @@ class Application {
         $readRows = 0;
 
         foreach($result as $record) {
-            foreach($record as $value) {
+            foreach($record as $field => $value) {
+                if ($field == "id") {
+                    continue;
+                }
+
+                if ($dataCache[$record["id"]][$field] !== $value) {
+                    echo "No match:\n\n{$dataCache[$record["id"]][$field]}\n\n{$value}\n\n";
+                }
+
                 $readCharCount += mb_strlen($value);
             }
 

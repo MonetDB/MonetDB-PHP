@@ -25,6 +25,7 @@ $parse_files = [
     "src/Connection.php",
     "src/Response.php",
     "src/StatusRecord.php",
+    "src/ColumnInfo.php"
 ];
 
 $target_file = "README.md";

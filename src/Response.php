@@ -62,6 +62,14 @@ class Response implements \Iterator {
     private $columnNames;
 
     /**
+     * Array of ColumnInfo objects that contain inforation about
+     * the columns of a table response to a 'select' query.
+     *
+     * @var ColumnInfo[]|null
+     */
+    private $columnInfoRecords;
+
+    /**
      * The current line without any processing / parsing.
      *
      * @var string|null
@@ -128,6 +136,7 @@ class Response implements \Iterator {
         $this->queryStatusRecord = null;
         $this->statusRecords = [];
         $this->ignoreTuples = false;
+        $this->columnInfoRecords = [];
 
         $this->inputStream->LoadNextResponse();
         $this->Parse();
@@ -157,6 +166,9 @@ class Response implements \Iterator {
 
     /**
      * Returns the names of columns for the table.
+     * If you would like to have more information about the
+     * columns, than just their names, then use the
+     * 'GetColumnInfo()' method.
      *
      * @return string[]
      */
@@ -220,7 +232,7 @@ class Response implements \Iterator {
                     /*
                         If there was already table data in the response,
                         then all newer data sets will be ignored.
-                        There should be only one select statement in
+                        There should be only one 'select' statement in
                         an SQL request. If there are more, then those
                         responses just get ignored.
                     */
@@ -235,25 +247,34 @@ class Response implements \Iterator {
                     /*
                         Process the header
                     */
-                    for($i = 0; $i < 4; $i++) {
+                    $infoRowTitles = [" # table_name", " # name", " # type", " # length"];
+                    $infoRows = [];
+
+                    foreach($infoRowTitles as $infoRowTitle) {
+                        $titleLength = strlen($infoRowTitle);
                         $this->currentLine = $this->inputStream->ReadNextLine();
                         if (@$this->currentLine[0] !== InputStream::MSG_SCHEMA_HEADER) {
                             throw new MonetException("Invalid response from MonetDB. Broken schema header in response.");
                         }
 
-                        if ($i == 1) {
-                            // Before: "% "          (length: 2)
-                            // After: " # name"      (length: 7)
-                            if (substr($this->currentLine, -7) != " # name") {
-                                throw new MonetException("Invalid response from MonetDB. The second header line of a table "
-                                    ."is supposed to contain the row of field names. Found something "
-                                    ."else:\n\n{$this->currentLine}\n");
-                            }
-
-                            $this->columnNames = $this->ParseRow(
-                                substr($this->currentLine, 2, -7)
-                            );
+                        if (substr($this->currentLine, -$titleLength) !== $infoRowTitle) {
+                            throw new MonetException("Invalid response from MonetDB. A header line of a table "
+                                ."is supposed to contain the '{$infoRowTitle}' row. Found something "
+                                ."else:\n\n{$this->currentLine}\n");
                         }
+
+                        $infoRows[] = $this->ParseRow(
+                            substr($this->currentLine, 2, -$titleLength)
+                        );
+                    }
+
+                    $this->columnNames = $infoRows[1];
+                    $this->columnInfoRecords = [];
+                    for($i = 0; $i < count($infoRows[0]); $i++) {
+                        $this->columnInfoRecords[] = new ColumnInfo(
+                            $infoRows[0][$i], $infoRows[1][$i],
+                            $infoRows[2][$i], (int)($infoRows[3][$i])
+                        );
                     }
 
                     continue;
@@ -336,11 +357,30 @@ class Response implements \Iterator {
                 $field = null;
             }
             /*
-                Can't use trim, because that would remove
-                quotes from the data at the end of the field.
+                - Don't use trim, because that would remove
+                    quotes from the data at the end of the field.
+                - Don't use stipcslashes, because that doesn't
+                    know utf-8.
             */
             else if (@$field[0] === '"') {
-                $field = @stripcslashes(substr($field, 1, -1));
+                $field = mb_ereg_replace_callback(
+                    "(\\\\\\\\|\\\\[0-7]{3,3}|\\\\r|\\\\n|\\\\t|\\\\0|\\\\'|\\\\\")",
+                    function($match) {
+                        switch($match[0]) {
+                            case "\\'": return "'";
+                            case '\\"': return '"';
+                            case '\\\\': return '\\';
+                            case "\\n": return "\n";
+                            case "\\r": return "\r";
+                            case "\\t": return "\t";
+                            case "\\0": return "\0";
+                            default: {
+                                return chr(octdec(substr($match[0], 1)));
+                            }
+                        }
+                    },
+                    substr($field, 1, -1)
+                );
             }
         }
 
@@ -425,5 +465,15 @@ class Response implements \Iterator {
      */
     public function GetStatusRecords(): array {
         return $this->statusRecords;
+    }
+
+    /**
+     * Returns an array of ColumnInfo objects that contain inforation
+     * about the columns of a table response to a 'select' query.
+     *
+     * @return ColumnInfo[]
+     */
+    public function GetColumnInfo(): array {
+        return $this->columnInfoRecords;
     }
 }

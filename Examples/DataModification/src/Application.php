@@ -77,7 +77,7 @@ EOF
         $stats = $result->GetStatusRecords();
 
         echo "Inserted rows: {$stats[0]->GetAffectedRows()}\n";
-        echo "Updated rows: {$stats[1]->GetAffectedRows()}\n";
+        echo "Updated rows: {$stats[1]->GetAffectedRows()}\n\n";
 
         /* *** */
 
@@ -92,6 +92,13 @@ EOF
             group by
                 "category"
         ');
+
+        foreach($result->GetColumnInfo() as $info) {
+            echo "Table/resource name: {$info->GetTableName()}\n";
+            echo "Field name: {$info->GetFieldName()}\n";
+            echo "Type: {$info->GetType()}\n";
+            echo "Length: {$info->GetLength()}\n";
+        }
 
         echo "\n";
         foreach($result as $record) {
