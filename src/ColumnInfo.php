@@ -36,7 +36,7 @@ class ColumnInfo {
      *
      * @var string
      */
-    private $fieldName;
+    private $columnName;
 
     /**
      * The SQL data type of the field.
@@ -59,14 +59,14 @@ class ColumnInfo {
      *
      * @ignore
      * @param string $tableName
-     * @param string $fieldName
+     * @param string $columnName
      * @param string $type
      * @param integer $length
      */
-    function __construct(string $tableName, string $fieldName, string $type, int $length)
+    function __construct(string $tableName, string $columnName, string $type, int $length)
     {
         $this->tableName = $tableName;
-        $this->fieldName = $fieldName;
+        $this->columnName = $columnName;
         $this->type = $type;
         $this->length = $length;
     }
@@ -84,13 +84,13 @@ class ColumnInfo {
     }
 
     /**
-     * Field name.
+     * Column name.
      *
      * @return string
      */
-    public function GetFieldName(): string
+    public function GetColumnName(): string
     {
-        return $this->fieldName;
+        return $this->columnName;
     }
 
     /**

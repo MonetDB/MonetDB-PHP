@@ -97,7 +97,7 @@ EOF
 
         foreach($result->GetColumnInfo() as $info) {
             echo "Table/resource name: {$info->GetTableName()}\n";
-            echo "Field name: {$info->GetFieldName()}\n";
+            echo "Field name: {$info->GetColumnName()}\n";
             echo "Type: {$info->GetType()}\n";
             echo "Length: {$info->GetLength()}\n\n";
         }

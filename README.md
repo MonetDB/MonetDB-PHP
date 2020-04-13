@@ -161,7 +161,7 @@ echo "The columns of the response data:\n\n";
 
 foreach($result->GetColumnInfo() as $info) {
     echo "Table/resource name: {$info->GetTableName()}\n";
-    echo "Field name: {$info->GetFieldName()}\n";
+    echo "Field name: {$info->GetColumnName()}\n";
     echo "Type: {$info->GetType()}\n";
     echo "Length: {$info->GetLength()}\n\n";
 }
@@ -340,7 +340,7 @@ $result3 = $connection3->Query("...");
 | Method | Documentation |
 | --- | --- |
 | <strong>GetTableName</strong> | The name of the table the field belongs to, or the name of a temporary resource if the value is the result of an expression.<br><br><strong>@return</strong> <em>string</em> |
-| <strong>GetFieldName</strong> | Field name.<br><br><strong>@return</strong> <em>string</em> |
+| <strong>GetColumnName</strong> | Column name.<br><br><strong>@return</strong> <em>string</em> |
 | <strong>GetType</strong> | The SQL data type of the field.<br><br><strong>@return</strong> <em>string</em> |
 | <strong>GetLength</strong> | A length value that can be used for deciding the width of the columns when rendering the response.<br><br><strong>@return</strong> <em>integer</em> |
 
