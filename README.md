@@ -9,6 +9,7 @@ Main features:
 - Multiple, concurrent connections.
 - Allows access to response stats, like execution time and affected row count, etc.
 - The thrown `MonetException` exception objects contain user-friendly error messages.
+- Provides information about the columns of the response data, like name, SQL type and length.
 
 # Table of contents
 
