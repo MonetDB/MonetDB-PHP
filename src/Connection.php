@@ -424,24 +424,15 @@ class Connection {
 
     /**
      * Escape a string value, to be inserted into a query,
-     * inside single quotes. SECURITY WARNING:
-     * Currently no successful SQL-injection attacks are known,
-     * but this function was implemented without full knowledge
-     * of the parsing algorithm on the server side, therefore
-     * it cannot be trusted completely. Use this library
-     * only for data analysis, but don't use it for
-     * authentication or session management, etc.
-     * Non-authenticated users should never have the
-     * opportunity to execute parameterized queries with
-     * it, and never run the server as root.
+     * inside single quotes.
+     * The following characters are escaped by this method:
+     * backslash, single quote, carriage return,
+     * line feed, tabulator, null character, CTRL+Z.
      * As a security measure this library forces the use of
      * multi-byte support and UTF-8 encoding, which is also
      * used by MonetDB, avoiding the SQL-injection attacks,
      * which play with differences between character encodings.
-     * The following characters are escaped by this method:
-     * backslash, single quote, carriage return,
-     * line feed, tabulator, null character, CTRL+Z.
-     *
+     * 
      * @param string $value
      * @return string
      */
