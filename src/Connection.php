@@ -106,6 +106,23 @@ class Connection {
     private $maxReplySize;
 
     /**
+     * Speed-up array for escaping
+     */
+    private const ESCAPE_CONVERSION = [
+        "\\" => "\\\\",
+        "'" => "\\'",
+        "\r" => "\\r",
+        "\n" => "\\n",
+        "\t" => "\\t",
+        /*
+            Don't convert to "\\0", because that can
+            fail if followed by an octal digit.
+        */
+        "\0" => "\\000",
+        "\032" => "\\032"
+    ];
+
+    /**
      * Create a new connection to a MonetDB database.
      * 
      * @param string $host The host of the database. Use '127.0.0.1' if the DB is on the same machine.
@@ -431,27 +448,17 @@ class Connection {
     public function Escape(string $value): string {
         /*
             - Don't use addcslashes, because that doesn't know about UTF-8
-            - See: https://stackoverflow.com/a/3666326/6630230
+            - This is a probable solution, but slow and memory intensive:
+                - https://stackoverflow.com/a/3666326/6630230
+            - mb_ereg_replace_callback is both efficient and UTF-8 compatible.
         */
-        $charArray = preg_split('//u', $value, -1, PREG_SPLIT_NO_EMPTY);
-
-        foreach($charArray as &$c) {
-            switch($c) {
-                case "\\": $c = "\\\\"; break;
-                case "'": $c = "\\'"; break;
-                case "\r": $c = "\\r"; break;
-                case "\n": $c = "\\n"; break;
-                case "\t": $c = "\\t"; break;
-                /*
-                    Don't convert to "\\0", because that can
-                    fail if followed by an octal digit.
-                */
-                case "\0": $c = "\\000"; break;
-                case "\032": $c = "\\032"; break;
-            }
-        }
-
-        return implode($charArray);
+        return mb_ereg_replace_callback(
+            "(\\\\|\\r|\\n|\\t|\\0|\\032|\\')",
+            function($match) {
+                return Connection::ESCAPE_CONVERSION[$match[0]];
+            },
+            $value
+        );
     }
 
     /**
