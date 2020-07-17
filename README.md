@@ -15,7 +15,8 @@ Main features:
 
 - [MonetDB-PHP](#monetdb-php)
 - [Table of contents](#table-of-contents)
-- [Installation](#installation)
+- [Installation with composer](#installation-with-composer)
+- [Usage without installation](#usage-without-installation)
 - [Examples](#examples)
   - [Example 1: Simple query](#example-1-simple-query)
   - [Example 2: Get execution stats](#example-2-get-execution-stats)
@@ -33,7 +34,7 @@ Main features:
   - [ColumnInfo Class](#columninfo-class)
 - [Development setup through the Docker image](#development-setup-through-the-docker-image)
 
-# Installation
+# Installation with composer
 
 This library is available on Packagist at:
 - https://packagist.org/packages/tbolner/monetdb-php
@@ -48,6 +49,40 @@ Or add the following line to your `composer.json` file's `require` section:
 
 ```
 "tbolner/monetdb-php": "^1.0"
+```
+
+# Usage without installation
+
+You don't need to use [Composer](https://getcomposer.org) in your project. You can
+just copy all files in the ['src' folder](https://github.com/MonetDB/MonetDB-PHP/tree/master/src),
+and include them in your project through the [include.php](src/include.php) file, which
+was created just for this purpose.
+
+```php
+require(__DIR__."/../path/to/include.php");
+```
+
+Then either reference the classes by a combination of a `use` statement and the short class name
+(as it is done in the [example projects](https://github.com/MonetDB/MonetDB-PHP/tree/master/Examples)):
+
+```php
+use MonetDB\Connection;
+
+$connection = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
+```
+
+Or just use the fully qualified class name (if your project doesn't use namespaces):
+
+```php
+$connection = new \MonetDB\Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
+```
+
+Please make sure that the `php-mbstring` extension is installed and enabled (which is the default in newer versions),
+and the default character set for you project is set to UTF-8: (This is required for preventing SQL injection attacks)
+
+```php
+mb_internal_encoding('UTF-8');
+mb_regex_encoding('UTF-8');
 ```
 
 # Examples
