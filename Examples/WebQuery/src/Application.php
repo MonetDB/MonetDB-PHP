@@ -77,7 +77,7 @@ EOF
 
         $response[] = '<!DOCTYPE html>';
         $response[] = '<html lang="en">';
-        $response[] = '<head><title>MonetDB-PHP-Deux</title>';
+        $response[] = '<head><title>MonetDB-PHP</title>';
         $response[] = '<style>table, td { border: 1px; border-style: solid; border-collapse: collapse; } td { padding: 5px; }</style>';
         $response[] = '</head>';
         $response[] = '<body>';

@@ -1,5 +1,5 @@
 {
-    "name": "tbolner/monetdb-php-deux",
+    "name": "tbolner/monetdb-php",
     "description": "A PHP client library for accessing MonetDB.",
     "keywords": [
         "MonetDB",

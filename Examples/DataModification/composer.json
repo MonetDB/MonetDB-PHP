@@ -1,5 +1,5 @@
 {
-    "name": "tbolner/monetdb-php-deux-example-modify",
+    "name": "tbolner/monetdb-php-example-modify",
     "description": "An example application for data modification.",
     "keywords": [
         "MonetDB",
@@ -20,7 +20,7 @@
     "require": {
         "php": ">=7.2",
         "ext-mbstring": "*",
-        "tbolner/monetdb-php-deux": "^1.0"
+        "tbolner/monetdb-php": "^1.0"
     },
     "autoload": {
         "psr-4": {

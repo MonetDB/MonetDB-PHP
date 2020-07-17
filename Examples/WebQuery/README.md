@@ -1,19 +1,19 @@
 Web query example
 =================
 
-This is an example project for MonetDB-PHP-Deux.
+This is an example project for MonetDB-PHP.
 
 Steps:
 
 - Follow the Dockerfile instructions in the main README.md file of the project.
 - Log into the Docker container
 - See appendix 1 on how to prepare the database.
-- Enter the `/var/MonetDB-PHP-Deux/Examples/DataModification` directory
+- Enter the `/var/MonetDB-PHP/Examples/DataModification` directory
 - Execute `composer install`
 - Try the following URLs to test the application:
-  - http://127.0.0.1:9292/MonetDB-PHP-Deux/
-  - http://127.0.0.1:9292/MonetDB-PHP-Deux/?name=Fluffor
-  - http://127.0.0.1:9292/MonetDB-PHP-Deux/?min_weight=3&max_weight=11
+  - http://127.0.0.1:9292/MonetDB-PHP/
+  - http://127.0.0.1:9292/MonetDB-PHP/?name=Fluffor
+  - http://127.0.0.1:9292/MonetDB-PHP/?min_weight=3&max_weight=11
 
 ## Appendix 1: preparing the database
 

@@ -27,7 +27,7 @@ error_reporting(E_ALL);
 
 require((__DIR__)."/vendor/autoload.php");
 
-// define("MonetDB-PHP-Deux-DEBUG", 1);
+// define("MonetDB-PHP-DEBUG", 1);
 
 try {
     $app = new Application();

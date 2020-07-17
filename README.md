@@ -1,7 +1,7 @@
-MonetDB-PHP-Deux
-================
+MonetDB-PHP
+===========
 
-A PHP client library for accessing MonetDB.
+The official PHP client library for accessing MonetDB. For PHP 7.2 or above.
 
 Main features:
 - Parameterized queries, using cached prepared statements.
@@ -13,7 +13,7 @@ Main features:
 
 # Table of contents
 
-- [MonetDB-PHP-Deux](#monetdb-php-deux)
+- [MonetDB-PHP](#monetdb-php)
 - [Table of contents](#table-of-contents)
 - [Installation](#installation)
 - [Examples](#examples)
@@ -36,18 +36,18 @@ Main features:
 # Installation
 
 This library is available on Packagist at:
-- https://packagist.org/packages/tbolner/monetdb-php-deux
+- https://packagist.org/packages/tbolner/monetdb-php
 
 First install [Composer](https://getcomposer.org/download/), then execute the following in your project's directory:
 
 ```
-composer require tbolner/monetdb-php-deux
+composer require tbolner/monetdb-php
 ```
 
 Or add the following line to your `composer.json` file's `require` section:
 
 ```
-"tbolner/monetdb-php-deux": "^1.0"
+"tbolner/monetdb-php": "^1.0"
 ```
 
 # Examples
@@ -357,7 +357,7 @@ $result3 = $connection3->Query("...");
 - Create the Docker container and the host user inside it:
 
         docker run -d -h monetdb-php --restart unless-stopped -p 9292:80\
-            -v ${PWD}:/var/MonetDB-PHP-Deux --name monetdb-php monetdb-php
+            -v ${PWD}:/var/MonetDB-PHP --name monetdb-php monetdb-php
         
         docker exec --user root -it monetdb-php sh -c \
             "useradd -m -s /bin/bash -u $(id -u) $(whoami)\
@@ -371,7 +371,7 @@ $result3 = $connection3->Query("...");
         monetdb start myDatabase
         mclient -d myDatabase
 
-- When you don't need the MonetDB-PHP-Deux container anymore, you can get rid of it easily: (this also removes the unused images)
+- When you don't need the MonetDB-PHP container anymore, you can get rid of it easily: (this also removes the unused images)
 
         docker stop monetdb-php\
         && docker image rm monetdb-php --force\

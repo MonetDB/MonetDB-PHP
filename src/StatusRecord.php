@@ -141,7 +141,7 @@ class StatusRecord {
             throw new MonetException("Unknown reply form MonetDB:\n{$line}\n");
         }
 
-        if (defined("MonetDB-PHP-Deux-DEBUG")) {
+        if (defined("MonetDB-PHP-DEBUG")) {
             echo "\n".$this->GetAsText()."\n";
         }
     }

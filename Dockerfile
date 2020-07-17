@@ -77,9 +77,9 @@ RUN apt-get -y install apache2 php7.2 php7.2-cli php7.2-mbstring php7.2-curl\
     && mv composer.phar /usr/bin/composer\
 \
     && printf "\
-Alias /MonetDB-PHP-Deux /var/MonetDB-PHP-Deux/Examples/WebQuery/www/\n\
+Alias /MonetDB-PHP /var/MonetDB-PHP/Examples/WebQuery/www/\n\
 \n\
-<Directory /var/MonetDB-PHP-Deux/Examples/WebQuery/www>\n\
+<Directory /var/MonetDB-PHP/Examples/WebQuery/www>\n\
         Options -Indexes +FollowSymLinks -MultiViews\n\
         AllowOverride all\n\
         Order allow,deny\n\
@@ -108,8 +108,8 @@ while true; do sleep infinity; done\n\
 # Finalizing setup
 #######################################################################
 EXPOSE 80
-VOLUME ["/var/MonetDB-PHP-Deux"]
-WORKDIR /var/MonetDB-PHP-Deux
+VOLUME ["/var/MonetDB-PHP"]
+WORKDIR /var/MonetDB-PHP
 ENV DEBIAN_FRONTEND dialog
 
 CMD ["/var/startup.sh"]

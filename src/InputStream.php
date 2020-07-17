@@ -188,7 +188,7 @@ class InputStream {
         $line = $this->response_lines[$this->line_cursor];
         $this->line_cursor++;
 
-        if (defined("MonetDB-PHP-Deux-DEBUG")) {
+        if (defined("MonetDB-PHP-DEBUG")) {
             echo "IN LINE:\n".$this->connection->Escape($line)."\n";
         }
         

@@ -309,7 +309,7 @@ class Connection {
             } while(strlen($chunk) > 0);
         }
 
-        if (defined("MonetDB-PHP-Deux-DEBUG")) {
+        if (defined("MonetDB-PHP-DEBUG")) {
             echo "OUT:\n".$this->Escape($msg)."\n";
         }
     }
