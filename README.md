@@ -15,14 +15,14 @@ Main features:
 
 - [MonetDB-PHP](#monetdb-php)
 - [Table of contents](#table-of-contents)
-- [Installation with composer](#installation-with-composer)
+- [Installation with Composer](#installation-with-composer)
 - [Usage without installation](#usage-without-installation)
 - [Examples](#examples)
   - [Example 1: Simple query](#example-1-simple-query)
   - [Example 2: Get execution stats](#example-2-get-execution-stats)
   - [Example 3: Parameterized query with prepared statement](#example-3-parameterized-query-with-prepared-statement)
   - [Example 4: Using escaping](#example-4-using-escaping)
-  - [Example 5: Renaming fields, using column info](#example-5-renaming-fields-using-column-info)
+  - [Example 5: Renaming fields and using column info](#example-5-renaming-fields-and-using-column-info)
   - [Example 6: Query the first record only](#example-6-query-the-first-record-only)
   - [Example 7: Transactions](#example-7-transactions)
   - [Example 8: Importing data the fastest way](#example-8-importing-data-the-fastest-way)
@@ -34,7 +34,7 @@ Main features:
   - [ColumnInfo Class](#columninfo-class)
 - [Development setup through the Docker image](#development-setup-through-the-docker-image)
 
-# Installation with composer
+# Installation with Composer
 
 This library is available on Packagist at:
 - https://packagist.org/packages/tbolner/monetdb-php
@@ -45,7 +45,7 @@ First install [Composer](https://getcomposer.org/download/), then execute the fo
 composer require tbolner/monetdb-php
 ```
 
-Or add the following line to your `composer.json` file's `require` section:
+Or add the following line to your `composer.json` file's `require` section and then execute `composer update`:
 
 ```
 "tbolner/monetdb-php": "^1.0"
@@ -77,8 +77,8 @@ Or just use the fully qualified class name (if your project doesn't use namespac
 $connection = new \MonetDB\Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
 ```
 
-Please make sure that the `php-mbstring` extension is installed and enabled (which is the default in newer versions),
-and the default character set for you project is set to UTF-8: (This is required for preventing SQL injection attacks)
+Please make sure that the `php-mbstring` extension is installed and enabled (which is the default in newer PHP versions),
+and the character encoding for your project is set to UTF-8: (This is required for preventing SQL injection attacks)
 
 ```php
 mb_internal_encoding('UTF-8');
@@ -177,7 +177,7 @@ EOF
 );
 ```
 
-## Example 5: Renaming fields, using column info
+## Example 5: Renaming fields and using column info
 
 ```php
 $result = $connection->Query('
