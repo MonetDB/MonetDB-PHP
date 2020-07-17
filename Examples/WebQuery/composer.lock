@@ -1,0 +1,67 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "1e81ee12bbe9555ebcc465574e3f9791",
+    "packages": [
+        {
+            "name": "tbolner/monetdb-php",
+            "version": "1.0.9",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/MonetDB/MonetDB-PHP.git",
+                "reference": "f79623f404be6b2db32a9df1117bb1e163e427fd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/MonetDB/MonetDB-PHP/zipball/f79623f404be6b2db32a9df1117bb1e163e427fd",
+                "reference": "f79623f404be6b2db32a9df1117bb1e163e427fd",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": ">=7.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "MonetDB\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Tamas Bolner",
+                    "homepage": "https://github.com/bolner",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A PHP client library for accessing MonetDB.",
+            "keywords": [
+                "MonetDB",
+                "client",
+                "columnar",
+                "data-science",
+                "library"
+            ],
+            "time": "2020-07-17T17:32:56+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=7.2",
+        "ext-mbstring": "*"
+    },
+    "platform-dev": [],
+    "plugin-api-version": "1.1.0"
+}
