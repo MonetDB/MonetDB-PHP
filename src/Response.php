@@ -167,7 +167,7 @@ class Response implements \Iterator {
     /**
      * Returns the names of columns for the table.
      * If you would like to have more information about the
-     * columns, than just their names, then use the
+     * columns than just their names, then use the
      * 'GetColumnInfo()' method.
      *
      * @return string[]
@@ -468,7 +468,7 @@ class Response implements \Iterator {
     }
 
     /**
-     * Returns an array of ColumnInfo objects that contain inforation
+     * Returns an array of ColumnInfo objects that contain information
      * about the columns of a table response to a 'select' query.
      *
      * @return ColumnInfo[]

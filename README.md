@@ -343,10 +343,10 @@ $result3 = $connection3->Query("...");
 | --- | --- |
 | <strong>Discard</strong> | Read through all of the data and discard it. Use this method when you don't want to iterate through a long query, but you would like to start a new one instead. |
 | <strong>IsDiscarded</strong> | Returns true if this response is no longer connected to an input TCP stream.<br><br><strong>@return</strong> <em>boolean</em> |
-| <strong>GetColumnNames</strong> | Returns the names of columns for the table. If you would like to have more information about the columns, than just their names, then use the 'GetColumnInfo()' method.<br><br><strong>@return</strong> <em>string[]</em> |
+| <strong>GetColumnNames</strong> | Returns the names of columns for the table. If you would like to have more information about the columns than just their names, then use the 'GetColumnInfo()' method.<br><br><strong>@return</strong> <em>string[]</em> |
 | <strong>Fetch</strong> | Returns the next row as an associative array, or null if the query ended.<br><br><strong>@return</strong> <em>array -or- null</em> |
 | <strong>GetStatusRecords</strong> | Returns one or more Status records that tell information about the queries executed through a single request.<br><br><strong>@return</strong> <em>StatusRecord[]</em> |
-| <strong>GetColumnInfo</strong> | Returns an array of ColumnInfo objects that contain inforation about the columns of a table response to a 'select' query.<br><br><strong>@return</strong> <em>ColumnInfo[]</em> |
+| <strong>GetColumnInfo</strong> | Returns an array of ColumnInfo objects that contain information about the columns of a table response to a 'select' query.<br><br><strong>@return</strong> <em>ColumnInfo[]</em> |
 
 <hr><br>
 
