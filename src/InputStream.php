@@ -182,7 +182,7 @@ class InputStream {
     public function ReadNextLine(): string
     {
         if (!isset($this->response_lines[$this->line_cursor])) {
-            return Connection::MSG_PROMPT;
+            return self::MSG_PROMPT;
         }
         
         $line = $this->response_lines[$this->line_cursor];
