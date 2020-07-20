@@ -34,7 +34,7 @@ by the main. The client application connects only to the main process
 directly, which acts as a proxy and transfers the data packages in both
 directions between the client and the database it is connected to.
 
-<img src="png/01_overview.png" alt="drawing" width="512"/>
+<img src="png/01_overview.png" alt="drawing" width="640"/>
 
 # 2. Messages and packets
 
@@ -47,14 +47,14 @@ contains the `server challenge`, which is required for the authentication),
 and afterwards the client can always expect a response for its messages to
 the server. (Although the response can be an empty message.)
 
-<img src="png/02_a_messages.png" alt="drawing" width="512"/>
+<img src="png/02_a_messages.png" alt="drawing" width="640"/>
 
 These text messages are transferred in packets. The maximal size of a
 packet is 8190 bytes. It is not guaranteed that a packet contains a
 proper UTF-8 encoded text, because it's possible that a multi-byte
 character is cut in half at the end of its payload.
 
-<img src="png/02_b_packets.png" alt="drawing" width="512"/>
+<img src="png/02_b_packets.png" alt="drawing" width="640"/>
 
 Therefore the simplest way to parse a message is to concatenate the
 payloads of the packets first. You can indirectly limit the size
@@ -125,7 +125,7 @@ the other still can provide protection.
 If the client selected SHA1 for the salted hashing and the server offered SHA512 for the
 password hashing, then the formula for getting the hash string is the following:
 
-<img src="png/03_a_hash.png" alt="drawing" width="512"/>
+<img src="png/03_a_hash.png" alt="drawing" width="640"/>
 
 Where the hash functions output hexadecimal values. After the client calculated the hash,
 it sends it in a message like the following:
@@ -173,13 +173,13 @@ it is proxied through and also at the destination database process.
 
 In practice this means usually only two authentications:
 
-<img src="png/03_b_merovingian.png" alt="drawing" width="512"/>
+<img src="png/03_b_merovingian.png" alt="drawing" width="640"/>
 
 This means that the flow drawn in paragraph [Messages and packets](#2-messages-and-packets)
 is not fully realistic, because at the repetition of the authentication process
 the client reads twice.
 
-<img src="png/03_c_flow.png" alt="drawing" width="512"/>
+<img src="png/03_c_flow.png" alt="drawing" width="640"/>
 
 If the redirect happens more than 10 times, then throw an error, because this means
 an error on the server side.
