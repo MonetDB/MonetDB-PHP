@@ -112,6 +112,7 @@ class StatusRecord {
             $this->queryID = (int)$fields[0];
             $this->rowCount = (int)$fields[2];
         } else if ($queryType == InputStream::Q_CREATE) {
+            // "SET TIME ZONE INTERVAL ..." returns this as well.
             $this->queryType = "schema";
             $this->queryTypeDescription = "Modify schema";
             $fields = $this->ParseFields($line, 2);

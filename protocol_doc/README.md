@@ -18,7 +18,19 @@ development of future client applications.
   - [3.1. Possible responses to an authentication request](#31-possible-responses-to-an-authentication-request)
   - [3.2. The Merovingian redirect](#32-the-merovingian-redirect)
 - [4. Commands and queries in a nutshell](#4-commands-and-queries-in-a-nutshell)
-- [5. Message types](#5-message-types)
+- [5. Response types](#5-response-types)
+  - [5.1. Redirect - **^**](#51-redirect---)
+  - [5.2. Query response - **&**](#52-query-response---)
+    - [5.2.1. Data response - **&1**](#521-data-response---1)
+    - [5.2.2. Modification results - **&2**](#522-modification-results---2)
+    - [5.2.3. Stats only - **&3**](#523-stats-only---3)
+    - [5.2.4. Transaction status - **&4**](#524-transaction-status---4)
+    - [5.2.5. Prepared statement creation - **&5**](#525-prepared-statement-creation---5)
+    - [5.2.6. Block response - **&6**](#526-block-response---6)
+  - [5.3. Schema header - **%**](#53-schema-header---)
+  - [5.4. Error - **!**](#54-error---)
+  - [5.5. Tuple - **&#91;**](#55-tuple---)
+  - [5.6. Empty message (prompt)](#56-empty-message-prompt)
 - [6. SQL queries](#6-sql-queries)
   - [6.1. Escaping](#61-escaping)
   - [6.2. Table format](#62-table-format)
@@ -168,25 +180,103 @@ After the client has sent the hashed password to the server, it can receive 3 ki
 ## 3.2. The Merovingian redirect
 
 The `Merovingian redirect` is not an actual redirect, but a request for the repetition of the authentication
-process. This repetition is required because the client has to authenticate at all the processes
-it is proxied through and also at the destination database process.
+process. It happens in the existing TCP connection. No new connections are required. This repetition is
+required because the client has to authenticate at all the processes it is proxied through and also at the
+destination database process.
 
 In practice this means usually only two authentications:
 
 <img src="png/03_b_merovingian.png" alt="drawing" width="640"/>
 
-This means that the flow drawn in paragraph [Messages and packets](#2-messages-and-packets)
+Therefore the flow drawn in paragraph [Messages and packets](#2-messages-and-packets)
 is not fully realistic, because at the repetition of the authentication process
 the client reads twice.
 
 <img src="png/03_c_flow.png" alt="drawing" width="640"/>
 
-If the redirect happens more than 10 times, then throw an error, because this means
-an error on the server side.
+If the redirect happens more than 10 times, then throw an error in the client application,
+because this shows an error on the server side.
 
 # 4. Commands and queries in a nutshell
 
-# 5. Message types
+After a successful authentication, the client can start to send requests to the server
+and read the responses. There are 2 main types of requests: Commands and queries.
+
+- **Commands**: They always start with an upper-case `X`. Can be used to configure properties
+    of the current session, or to request the next page of a table response. Examples:<br><br>
+    Set the `reply_size` to 200 (See chapter [Pagination](#63-pagination)):
+
+        Xreply_size 200
+
+    Request the rows 400-599 from the query with ID 2 (See chapter [Pagination](#63-pagination)):
+
+        Xexport 2 400 200
+
+- **SQL Queries**: They always start with a lower-case `s`. With SQL queries you can either
+    create, update, modify or delete data, modify the database schema, etc. or you can
+    also set session properties, like the time zone.<br><br>
+    Configure automatic conversion for date-time values in the current session:
+
+        sSET TIME ZONE INTERVAL '+02:00' HOUR TO MINUTE
+
+    Query the contents of a table:
+
+        sSELECT * FROM myTable
+
+# 5. Response types
+
+Responses are messages sent from the server to the client, that answer requests
+previously sent by the client. Different kinds of requests trigger different
+kinds of responses. The type of a response can be identified by their first
+character.
+
+| First character | Name | Description |
+| --- | --- | --- |
+| **^** (carat) | Redirect | Used during authentication only, to indicate a [Merovingian redirect](#32-the-merovingian-redirect). |
+| **&** (ampersand) | Query response | A response to an SQL query or to an export command. |
+| **%** (percent) | Table header | When tabular data is returned (mostly for a select query), then there are 4 header lines which come before the tuples and tell information about the columns. |
+| **!** (exclamation  mark) | Error | The response is an error message. |
+| **[** (bracket) | Tuple | Contains tuples, a row of a tabular data set. |
+
+In addition to these, a valid response is also the `empty message`. See chapter
+[Messages and packets](#2-messages-and-packets) for more information.
+
+Each message type can return different kinds of information in different formats.
+The next chapters will discuss these formats in detail.
+
+## 5.1. Redirect - **^**
+
+This response has been discussed already in chapter [The Merovingian redirect](#32-the-merovingian-redirect).
+Redirect messages always start with the `^` (carat) character. An example response:
+
+    ^mapi:merovingian://proxy?database=myDatabase
+
+## 5.2. Query response - **&**
+
+A response to an SQL query or to an export command. This type has multiple sub-types.
+While the ampersand (&) character is the first, it is followed by a number from
+1 to 6, which tells the sub-type.
+
+### 5.2.1. Data response - **&1**
+
+### 5.2.2. Modification results - **&2**
+
+### 5.2.3. Stats only - **&3**
+
+### 5.2.4. Transaction status - **&4**
+
+### 5.2.5. Prepared statement creation - **&5**
+
+### 5.2.6. Block response - **&6**
+
+## 5.3. Schema header - **%**
+
+## 5.4. Error - **!**
+
+## 5.5. Tuple - **&#91;**
+
+## 5.6. Empty message (prompt)
+
 
 # 6. SQL queries
 
