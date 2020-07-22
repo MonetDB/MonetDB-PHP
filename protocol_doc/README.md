@@ -27,7 +27,7 @@ development of future client applications.
     - [5.2.4. Transaction status - **&4**](#524-transaction-status---4)
     - [5.2.5. Prepared statement creation - **&5**](#525-prepared-statement-creation---5)
     - [5.2.6. Block response - **&6**](#526-block-response---6)
-  - [5.3. Schema header - **%**](#53-schema-header---)
+  - [5.3. Table header - **%**](#53-table-header---)
   - [5.4. Error - **!**](#54-error---)
   - [5.5. Tuple - **&#91;**](#55-tuple---)
   - [5.6. Empty message (prompt)](#56-empty-message-prompt)
@@ -212,16 +212,23 @@ and read the responses. There are 2 main types of requests: Commands and queries
 
         Xexport 2 400 200
 
-- **SQL Queries**: They always start with a lower-case `s`. With SQL queries you can either
-    create, update, modify or delete data, modify the database schema, etc. or you can
-    also set session properties, like the time zone.<br><br>
+- **SQL Queries**: They always start with a lower-case `s` and must end with a `;` colon.
+    With SQL queries you can either create, update, modify or delete data, modify the
+    database schema, etc. or you can also set session properties, like the time zone.<br><br>
     Configure automatic conversion for date-time values in the current session:
 
-        sSET TIME ZONE INTERVAL '+02:00' HOUR TO MINUTE
+        sSET TIME ZONE INTERVAL '+02:00' HOUR TO MINUTE;
+    
+    Select the default schema:
+
+        sSET SCHEMA mySchema;
 
     Query the contents of a table:
 
-        sSELECT * FROM myTable
+        sSELECT *
+        FROM myTable;
+
+    Notice that the query can contain EOL characters.
 
 # 5. Response types
 
@@ -232,7 +239,7 @@ character.
 
 | First character | Name | Description |
 | --- | --- | --- |
-| **^** (carat) | Redirect | Used during authentication only, to indicate a [Merovingian redirect](#32-the-merovingian-redirect). |
+| **^** (caret) | Redirect | Used during authentication only, to indicate a [Merovingian redirect](#32-the-merovingian-redirect). |
 | **&** (ampersand) | Query response | A response to an SQL query or to an export command. |
 | **%** (percent) | Table header | When tabular data is returned (mostly for a select query), then there are 4 header lines which come before the tuples and tell information about the columns. |
 | **!** (exclamation  mark) | Error | The response is an error message. |
@@ -247,7 +254,7 @@ The next chapters will discuss these formats in detail.
 ## 5.1. Redirect - **^**
 
 This response has been discussed already in chapter [The Merovingian redirect](#32-the-merovingian-redirect).
-Redirect messages always start with the `^` (carat) character. An example response:
+Redirect messages always start with the `^` (caret) character. An example response:
 
     ^mapi:merovingian://proxy?database=myDatabase
 
@@ -259,6 +266,52 @@ While the ampersand (&) character is the first, it is followed by a number from
 
 ### 5.2.1. Data response - **&1**
 
+This is a response for a select query. For example let's see the response for query:
+(Don't forget that all queries have to start with an `s` character and end with a colon `;`.)
+
+    sselect
+        "category",
+        round(sys.stddev_samp("weight_kg"), 2) as "weight_stddev",
+        round(sys.median("weight_kg"), 2) as "weight_median",
+        round(avg("weight_kg"), 2) as "weight_mean"
+    from
+        "cats"
+    group by
+        "category";
+
+The first row of the response tells with the `&1` beginning that this is a data response to a query.
+The `&1` is followed by a list of space-separated values, which will be discussed in detail below.
+After the first line come 4 header lines and then the data rows.
+
+<img src="png/05_a_data_response.png" alt="drawing" width="640"/>
+
+The first line contains 9 fields:
+
+| Index | Sample value | Description |
+| --- | --- | --- |
+| 0 | &1 | Identifies the response type. (data response to a query) |
+| 1 | 0 | Query ID. Can be used later to reference the query in the same session. For example in an `export` command. |
+| 2 | 3 | Number of rows in the full response. This includes those which didn't fit into this message. |
+| 3 | 4 | ? |
+| 4 | 3 | ? |
+| 5 | 2107 | Execution time in microseconds. |
+| 6 | 246 | Query parsing time in microseconds. |
+| 7 | 143 | ? |
+| 8 | 19 | ? |
+
+The 4 header lines describe the columns of the response. Each line ends with the name of the header
+which helps to avoid confusion, although their order is always the same.
+
+| Order | Header name | Description |
+| --- | --- | --- |
+| 1 | table_name | If the value if from a reference to a table's field, then this contains the name of the table. Otherwise if the value is a result of an exporession, then contains the name of a temporary resource. |
+| 2 | name | The name of the column. |
+| 3 | type | The SQL type of the column. |
+| 4 | length | This length value can help displaying the table in a console window. (Fixed-length character display) |
+
+Since the data rows (tuples) contain escaped values, you can freely split or scan through the rows
+by looking for tabulator characters or for their combinations with the commas.
+
 ### 5.2.2. Modification results - **&2**
 
 ### 5.2.3. Stats only - **&3**
@@ -269,7 +322,7 @@ While the ampersand (&) character is the first, it is followed by a number from
 
 ### 5.2.6. Block response - **&6**
 
-## 5.3. Schema header - **%**
+## 5.3. Table header - **%**
 
 ## 5.4. Error - **!**
 
