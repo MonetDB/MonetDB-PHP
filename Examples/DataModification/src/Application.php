@@ -45,6 +45,8 @@ class Application {
         /* *** */
 
         $result = $connection->Query(<<<EOF
+            start transaction;
+
             insert into
                 "cats"
                 ("name", "weight_kg", "category", "birth_date", "net_worth_usd")
@@ -71,6 +73,8 @@ class Application {
                 "weight_kg" = 9.42
             where
                 "name" = 'Ginger';
+            
+            commit;
 EOF
         );
 

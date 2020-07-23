@@ -35,6 +35,7 @@ development of future client applications.
   - [6.1. Escaping](#61-escaping)
   - [6.2. Table format](#62-table-format)
   - [6.3. Pagination](#63-pagination)
+  - [6.4. Multiple queries in a single message](#64-multiple-queries-in-a-single-message)
 - [7. Prepared statements](#7-prepared-statements)
 - [8. Channels, sessions and error handling](#8-channels-sessions-and-error-handling)
 
@@ -180,7 +181,7 @@ After the client has sent the hashed password to the server, it can receive 3 ki
 ## 3.2. The Merovingian redirect
 
 The `Merovingian redirect` is not an actual redirect, but a request for the repetition of the authentication
-process. It happens in the existing TCP connection. No new connections are required. This repetition is
+process. It happens in the existing TCP connection. No new connections are created. This repetition is
 required because the client has to authenticate at all the processes it is proxied through and also at the
 destination database process.
 
@@ -294,8 +295,8 @@ The first line contains 9 fields:
 | 2 | 3 | Number of rows in the full response. This includes those which didn't fit into this message. |
 | 3 | 4 | ? |
 | 4 | 3 | ? |
-| 5 | 2107 | Execution time in microseconds. |
-| 6 | 246 | Query parsing time in microseconds. |
+| 5 | 2107 | Execution time in microseconds. (?) |
+| 6 | 246 | Query parsing time in microseconds. (?) |
 | 7 | 143 | ? |
 | 8 | 19 | ? |
 
@@ -304,32 +305,129 @@ which helps to avoid confusion, although their order is always the same.
 
 | Order | Header name | Description |
 | --- | --- | --- |
-| 1 | table_name | If the value if from a reference to a table's field, then this contains the name of the table. Otherwise if the value is a result of an exporession, then contains the name of a temporary resource. |
+| 1 | table_name | If the value is from a reference to a table's field, then this contains the name of the table. Otherwise if the value is a result of an expression, then it contains the name of a temporary resource. |
 | 2 | name | The name of the column. |
 | 3 | type | The SQL type of the column. |
 | 4 | length | This length value can help displaying the table in a console window. (Fixed-length character display) |
 
-Since the data rows (tuples) contain escaped values, you can freely split or scan through the rows
+Since the string values in the tuples contain escaped values (like `"\t"`), you can freely split or scan through the rows
 by looking for tabulator characters or for their combinations with the commas.
 
 ### 5.2.2. Modification results - **&2**
 
+Reponse for `INSERT` or `UPDATE` queries. Example:
+
+    &2 15 -1 2113 439 1596 234
+
+It is a single line, without additional lines, composed of 7 space-separated values:
+
+| Index | Sample value | Description |
+| --- | --- | --- |
+| 0 | &2 | Identifies the response type. (Data modification result) |
+| 1 | 15 | Number of inserted or affected rows. |
+| 2 | -1 | ? |
+| 3 | 2113 | Execution time (?) |
+| 4 | 439 | Query parsing time (?) |
+| 5 | 1596 | ? |
+| 6 | 234 | ? |
+
 ### 5.2.3. Stats only - **&3**
+
+This response is usually returned when a table or a schema is created,
+and for expressions like `SET TIME ZONE` or `SET SCHEMA`. Example response:
+
+    &3 733 79
+
+A sinlge line of 3 space-separated values:
+
+| Index | Sample value | Description |
+| --- | --- | --- |
+| 0 | &3 | Identifies the response type. (Stats only) |
+| 1 | 733 | Execution time (?) |
+| 2 | 79 | Query parsing time (?) |
 
 ### 5.2.4. Transaction status - **&4**
 
+Returned after SQL statements that deal with transactions, like:
+`START TRANSACTION`, `COMMIT`, `ROLLBACK`. It tell's whether the current session
+is now in auto-commit state or not. Example response:
+
+    &4 f
+
+A sinlge line of 2 space-separated values:
+
+| Index | Sample value | Description |
+| --- | --- | --- |
+| 0 | &4 | Identifies the response type. (Transaction status) |
+| 1 | f | Boolean value. `f` = auto-commit mode is disable (a transaction is started). `t` = auto-commit mode is enabled, there's no active transaction. |
+
 ### 5.2.5. Prepared statement creation - **&5**
+
+This response is returned for an SQL query which creates a prepared statement. Example query:
+
+    sPREPARE select * from cats where weight_kg > ?;
+
+An example reponse:
+
+    &5 15 5 6 5
+
+The response consists of 5 space-separated values:
+
+| Index | Sample value | Description |
+| --- | --- | --- |
+| 0 | &5 | Identifies the response type. (Prepared statement creation) |
+| 1 | 15 | The ID of the created prepared statement. This can be used in an `EXECUTE` statement. |
+| 2 | 5 | ? |
+| 3 | 6 | ? |
+| 4 | 5 | ? |
 
 ### 5.2.6. Block response - **&6**
 
+Returned for an `EXPORT` command. See chapter [Pagination](#63-pagination) for more information.
+It's similar to the [Data response](#521-data-response---1), but there are no header lines,
+only the tuples. Example response:
+
+    &6 2 11 200 600
+
+The response consists of 5 space-separated values:
+
+| Index | Sample value | Description |
+| --- | --- | --- |
+| 0 | &6 | Identifies the response type. (Block response) |
+| 1 | 2 | Query ID. This ID was referenced in the export command too. |
+| 2 | 11 | ? |
+| 3 | 200 | Number of rows in this current response. (not total) |
+| 4 | 600 | The offset (index) of the first row in the response. |
+
+Fields 3 and 4 are actually the two parameters of the export command.
+
 ## 5.3. Table header - **%**
+
+A line that contains information about table columns. Discussed in chapter [Data response](#521-data-response---1).
 
 ## 5.4. Error - **!**
 
+Error responses start with an exclamation mark `!`, follow by an error code, then a text
+message after a second exclamation mark. When the server returns an error message,
+then it clears the complete session state (forgets everything). See section
+[Channels, sessions and error handling](#8-channels-sessions-and-error-handling)
+for more information.
+
+Examples:
+
+    !42S02!SELECT: no such table 'notexists'
+
+    !42000!syntax error, unexpected IDENT in: "
+
 ## 5.5. Tuple - **&#91;**
+
+A line that contains tabular data. Discussed in chapter [Data response](#521-data-response---1).
 
 ## 5.6. Empty message (prompt)
 
+It is returned only for a successful authentication request. See chapter: [Authentication](#3-authentication)
+
+An empty message consists only of the 2-byte header, containing the value: 0x0001
 
 # 6. SQL queries
 
@@ -338,6 +436,8 @@ by looking for tabulator characters or for their combinations with the commas.
 ## 6.2. Table format
 
 ## 6.3. Pagination
+
+## 6.4. Multiple queries in a single message
 
 # 7. Prepared statements
 

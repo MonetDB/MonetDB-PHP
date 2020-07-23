@@ -87,6 +87,15 @@ class StatusRecord {
     private $preparedStatementID = null;
 
     /**
+     * Populated after "start transaction", "commit" or "rollback".
+     * Tells whether the current session is in auto-commit mode
+     * or not.
+     *
+     * @var bool
+     */
+    private $autoCommitState = null;
+
+    /**
      * The server always responds with a status line to a query,
      * which tells data like the time spent on it, or the number
      * of records affected, etc.
@@ -130,8 +139,10 @@ class StatusRecord {
             $fields = $this->ParseFields($line, 1);
             if ($fields[0] === 'f') {
                 $this->queryTypeDescription = "Transaction started";
+                $this->autoCommitState = false;
             } else {
                 $this->queryTypeDescription = "Transaction ended";
+                $this->autoCommitState = true;
             }
         } else if ($queryType == InputStream::Q_PREPARE) {
             $this->queryType = "prepared_statement";
@@ -143,7 +154,7 @@ class StatusRecord {
         }
 
         if (defined("MonetDB-PHP-DEBUG")) {
-            echo "\n".$this->GetAsText()."\n";
+            echo "\n".$this->GetAsText()."\n\n";
         }
     }
 
@@ -156,7 +167,7 @@ class StatusRecord {
      * @return string[]
      */
     private function ParseFields(string $line, int $count): array {
-        $parts = explode(" ", substr($line, 3, -1));
+        $parts = explode(" ", substr(trim($line), 3));
         if (count($parts) != $count) {
             throw new MonetException("Invalid response from MonetDB. Status response has invalid number of "
                 ."fields. '{$count}' is expected:\n{$line}\n");
@@ -296,5 +307,17 @@ class StatusRecord {
      */
     public function GetQueryID(): ?int {
         return $this->queryID;
+    }
+
+    /**
+     * Available after "start transaction", "commit" or "rollback".
+     * Tells whether the current session is in auto-commit mode
+     * or not.
+     *
+     * @return boolean|null
+     */
+    public function GetAutoCommitState(): ?bool
+    {
+        return $this->autoCommitState;
     }
 }
