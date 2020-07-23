@@ -388,8 +388,11 @@ It's similar to the [Data response](#521-data-response---1), but there are no he
 only the tuples. Example response:
 
     &6 2 11 200 600
+    [ ...,\t...,\t...,\t...\t]
+    [ ...,\t...,\t...,\t...\t]
+    ...
 
-The response consists of 5 space-separated values:
+The first line of the response consists of 5 space-separated values:
 
 | Index | Sample value | Description |
 | --- | --- | --- |
