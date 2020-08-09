@@ -72,7 +72,8 @@ Therefore the simplest way to parse a message is to concatenate the
 payloads of the packets first. You can indirectly limit the size
 of the messages received from the server, using the `reply_size` command,
 which tells the server the maximal number of database rows, that can be
-returned in a message. (= pagination)
+returned in a message. See chapter [Pagination](#63-pagination) for
+more information.
 
 Every packet starts with a 16 bit (2 byte) integer, called header. The LSB
 of the header is only 1 for the last packet in the message, and 0 for
@@ -182,7 +183,8 @@ After the client has sent the hashed password to the server, it can receive 3 ki
 The `Merovingian redirect` is not an actual redirect, but a request for the repetition of the authentication
 process. It happens in the existing TCP connection. No new connections are created. This repetition is
 required because the client has to authenticate at all the processes it is proxied through and also at the
-destination database process.
+destination database process. (See chapter [Redirect](#51-redirect---) for more information on
+the response format.)
 
 In practice this means usually only two authentications:
 
@@ -560,7 +562,7 @@ Then the response will be a single message, composed of multiple lines:
 # 7. Prepared statements
 
 For client libraries it is often advised to use parameterized queries
-in order to use string values safely. When escaping is done manually,
+in order to pass string values safely. When escaping is done manually,
 a single forgotten escaping is enough to enable SQL injection attacks.
 Like in this PHP example:
 
@@ -626,3 +628,7 @@ You cannot pass numbers or true/false values as strings, but they have to be
 passed without quotes, example:
 
     sEXECUTE 15 ("string", true, false, null, 3.141592653589, "another string");
+
+All string values need to be escaped as discussed in chapter [Escaping](#61-escaping).
+
+It is important that when an [error message](#54-error---) is returned, all session data are discarded. Which includes the prepared statements.
