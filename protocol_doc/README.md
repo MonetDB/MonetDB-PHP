@@ -37,7 +37,6 @@ development of future client applications.
   - [6.3. Pagination](#63-pagination)
   - [6.4. Multiple queries in a single message](#64-multiple-queries-in-a-single-message)
 - [7. Prepared statements](#7-prepared-statements)
-- [8. Channels, sessions and error handling](#8-channels-sessions-and-error-handling)
 
 # 1. Overview
 
@@ -546,6 +545,84 @@ the first line of the [data response](#521-data-response---1).
 
 ## 6.4. Multiple queries in a single message
 
+You can send multiple SQL queries in a single message, separated by
+colon `;` characters:
+
+    sSET SCHEMA mySchema; update table cats set name='asd';
+    insert into myTable (value1, value2) values (1, 2);
+
+Then the response will be a single message, composed of multiple lines:
+
+    &3 733 79
+    &2 15 -1 2113 439 1596 234
+    &2 1 -1 1232 322 890 150
+
 # 7. Prepared statements
 
-# 8. Channels, sessions and error handling
+For client libraries it is often advised to use parameterized queries
+in order to use string values safely. When escaping is done manually,
+a single forgotten escaping is enough to enable SQL injection attacks.
+Like in this PHP example:
+
+```php
+$escapedValue = $connection->Escape($input1);
+$forgotEscaping = $input2;
+
+$connection->Query("
+    update
+        myTable
+    set
+        value1 = '$escapedValue'
+    where
+        value2 = '$forgotEscaping'
+");
+```
+
+But when using a parameterized query it isn't possible to forget
+about it, as it is done automatically. See the following PHP example:
+
+```php
+$connection->Query("
+    update
+        myTable
+    set
+        value1 = ?
+    where
+        value2 = ?
+", [
+    $input1, $input2
+]);
+```
+
+The only type of parameterized query supported by MonetDB is
+prepared statement. Prepared statements are compiled only
+when created, and identified by a number (ID).
+
+For each parameterized value you have to provide a `?` (question
+mark) placeholder. The creation is done using the `PREPARE` SQL
+statement.
+
+    sPREPARE
+    update
+        myTable
+    set
+        value1 = ?
+    where
+        value2 = ?;
+
+The response format is discussed in section [Prepared statement creation](#525-prepared-statement-creation---5).
+Example response:
+
+    &5 15 5 6 5
+
+The second value (above `15`) is the ID of the created prepared statement. You
+can use that ID in an `EXECUTE` statement, which executed the prepared
+statement with the specified parameters. Example:
+
+    sEXECUTE 15 ("First\'Value", "Second\"Value");
+
+Please note that all values passed to the execute statement are type sensitive.
+You cannot pass numbers or true/false values as strings, but they have to be
+passed without quotes, example:
+
+    sEXECUTE 15 ("string", true, false, null, 3.141592653589, "another string");
