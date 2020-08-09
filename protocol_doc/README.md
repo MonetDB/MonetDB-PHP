@@ -169,8 +169,8 @@ After the client has sent the hashed password to the server, it can receive 3 ki
         !InvalidCredentialsException:checkCredentials:invalid credentials for user 'monetdb'
 
     Detection: the response starts with the `"!InvalidCredentialsException:"` string.
-    See section [Channels, sessions and error handling](#8-channels-sessions-and-error-handling)
-    for more information on how to detect and handle error responses from the server.
+    When MonetDB returns an error message, then it also discards all session data,
+    including active queries, prepared statements, time zone and other settings.
 
 - A message requesting a Merovingian redirect. See the next paragraph about this case. Example:
 
@@ -416,9 +416,8 @@ Discussed in chapter [Data response](#521-data-response---1).
 
 Error responses start with an exclamation mark `!`, followed by an error code, then a text
 message after a second exclamation mark. When the server returns an error message,
-then it clears the complete session state (forgets everything). See section
-[Channels, sessions and error handling](#8-channels-sessions-and-error-handling)
-for more information.
+then it clears the complete session state (forgets everything, including prepared
+statements and active queries).
 
 Examples:
 
