@@ -59,7 +59,7 @@ and include them in your project through the [include.php](src/include.php) file
 was created just for this purpose.
 
 ```php
-require(__DIR__."/../path/to/include.php");
+require_once(__DIR__."/../path/to/include.php");
 ```
 
 Then either reference the classes by a combination of a `use` statement and the short class name
@@ -77,7 +77,7 @@ Or just use the fully qualified class name (if your project doesn't use namespac
 $connection = new \MonetDB\Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
 ```
 
-Please make sure that the `php-mbstring` extension is installed and enabled (which is the default in newer PHP versions),
+Please make sure that the `php-mbstring` (multi-byte string) extension is installed and enabled,
 and the character encoding for your project is set to UTF-8: (This is required for preventing SQL injection attacks)
 
 ```php

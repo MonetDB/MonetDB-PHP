@@ -438,13 +438,111 @@ An empty message consists only of the 2-byte header, containing the value: 0x000
 # 6. SQL queries
 
 As it was mentioned already in section [Commands and queries in a nutshell](#4-commands-and-queries-in-a-nutshell),
+query requests always start with a lower-case `s` letter, and the SQL statements end with a semi-colon `;`.
+For example:
 
+        sSELECT *
+        FROM myTable;
+
+SQL statements can freely contain newline and other white-space characters.
+The possible responses are discussed in section [Query response](#52-query-response---).
+See the following sub-sections for additional information on query-related topics.
 
 ## 6.1. Escaping
 
+Escaping is required for safely transferring text values between the client and the server,
+without breaking the container format. It happens in both directions:
+
+- The server returns the data in a tabular format discussed in section
+    [The tabular format of the data response](#62-the-tabular-format-of-the-data-response).
+    All the text values inside it are required to be escaped, because any tabulator, newline
+    or double-quote character could break the parser of the client application. Example
+    data tuple response with escaping:
+
+    <img src="png/06_a_tuples_escaping.png" alt="drawing" width="640"/>
+
+    The client application will have to unescape all escape sequences it finds.
+
+- The client is also required to send all text values inside the SQL queries in an
+    escaped form. But in this case breaking the container format is not the only reason
+    for doing so. Security considerations also play a huge role. Namely: To avoid
+    [SQL injection](https://en.wikipedia.org/wiki/SQL_injection) attacks against the client application.
+    Example SQL query with escaping:
+
+    ```sql
+    insert into
+        "cats"
+        ("name", "weight_kg", "category", "birth_date", "net_worth_usd")
+    values
+        ('D\'artagnan', 8.2, 'fluffy', '2012-04-23', 2340000)
+    ```
+
+In theory the above 2 cases can be implemented with different escaping/unescaping
+mappings, because for example one needs to escape double quotes, while the other
+single ones. Data response rows require tabulator and newline characters to be escaped,
+while these won't cause any problems in a query.
+
+But for the sake of simplicity it is common to use a single mapping that contains
+all special characters, i.e. to use a single function for both purposes:
+
+| Character | Unicode | Escape sequence |
+| --- | --- | --- |
+| Single quote (Apostrophe) | U+0027 | `\'` |
+| Double quote | U+0022 | `\"` |
+| Tabulator | U+0009 | `\t` |
+| Carriage return | U+000D | `\r` |
+| Line feed | U+000A | `\n` |
+| Null character | U+0000 | `\000` |
+
+Notice that `\000` is used, instead of `\0`. A single octal value can fail if
+it is followed by numbers in the text, for example: "1234`\0`567". Which can
+be interpreted as "1234`\056`7". Therefore always use 3 digits for octal
+codes. Also note that, while the null character is part of the unicode
+standard, MonetDB will interpret it as the end of the string. Probably because
+it uses old C-style functions.
+
 ## 6.2. The tabular format of the data response
 
+The fields of the first line of the data response and the header rows are
+discussed in chapter [Data response](#521-data-response---1), also showing the following
+example response:
+
+<img src="png/05_a_data_response.png" alt="drawing" width="640"/>
+
+Here we discuss a method for parsing a single data line:
+
+- The data lines can be detected by their leading `[` (open bracket) character. It is presumed that the lines are iterated through in a way that they don't contain the line feed (`\n`) character.
+- The frist and last 2 characters (`"[ "`, `"\t]"`) have to be ignored.
+- Notice that all strings in the row are escaped in the [already defined way](#61-escaping). Therefore the only TAB characters that remain are the field separators. You can either search for them or split the string by the comma/tab combination.
+- You can know the types of the columns from the header rows, although this isn't always required. (See chapter [Data response](#521-data-response---1))
+- If a field value starts and ends with double quotes, then it is a string. To get the string value, you just have to [unescape](#61-escaping) the contents inside the quotes.
+- Boolean values are `true`, `false`. Null value is `null`. These are case-insensitive, and without any quote.
+
 ## 6.3. Pagination
+
+Incoming messages can become huge if they contain data rows. Since, because of reasons
+discussed in chapter [Messages and packets](#2-messages-and-packets), the simplest way
+to parse a response is by first joining all its packets, one can run out of memory quickly.
+
+One way to control the response size would be to use the `LIMIT` SQL clause. But for a
+generic client library it is not recommended to do any modifications in the passed SQL
+statements. So instead of that, the client-server protocol provides a command that tells
+how many data rows should be returned in the [first response](#521-data-response---1):
+
+    Xreply_size 200
+
+Please see the command format in chapter [Commands and queries in a nutshell](#4-commands-and-queries-in-a-nutshell).
+
+Then for each remaining chunk of data, you need to execute the `export` command. Example
+for requesting the rows 400-599 from the query with ID 2:
+
+    Xexport 2 400 200
+
+The export command will be answered by a [block response](#526-block-response---6), which
+has no header lines, but data only.
+
+You can know the number of total rows in the response from the third field (index 2) of
+the first line of the [data response](#521-data-response---1).
 
 ## 6.4. Multiple queries in a single message
 

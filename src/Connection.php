@@ -328,7 +328,7 @@ class Connection {
      * 
      * @param string $sql
      * @param array|null $params An optional array for prepared statement parameters.
-     * If not provided (or null), then a normal query is executed, instead of
+     * If not provided (or null), then a normal query is executed instead of
      * a prepared statement. The parameter values will retain their PHP type if
      * possible. The following values won't be converted to string: null, true, false
      * and numeric values.
@@ -367,7 +367,7 @@ class Connection {
      * 
      * @param string $sql
      * @param array|null $params An optional array for prepared statement parameters.
-     * If not provided (or null), then a normal query is executed, instead of
+     * If not provided (or null), then a normal query is executed instead of
      * a prepared statement. See the 'Query' method for more information about
      * the parameter values.
      * @return string[]|null
