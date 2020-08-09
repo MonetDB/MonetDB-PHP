@@ -11,6 +11,9 @@ Main features:
 - The thrown `MonetException` exception objects contain user-friendly error messages.
 - Provides information about the columns of the response data, like name, SQL type and length.
 
+If you wish to implement your own client library either for PHP or for another language,
+then please read the [guide about the client-server protocol](protocol_doc/README.md).
+
 # Table of contents
 
 - [MonetDB-PHP](#monetdb-php)

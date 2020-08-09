@@ -1,7 +1,7 @@
 MonetDB client-server protocol
 ==============================
 
-*(By Tamas Bolner, 2020-07)*
+*(By Tamas Bolner, 2020-08)*
 
 This document aims to summarize the key points of the TCP/IP-based
 client-server protocol between the MonetDB server and the clients
