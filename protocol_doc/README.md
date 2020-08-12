@@ -200,7 +200,7 @@ which is done by an `mserver5` instance. (See chapter [Redirect](#51-redirect---
 the response format.)
 
 (Since the first authentication is a fake one, you don't even need to send a proper password
-has to it. And indeed, it has been tested that monetdbd will return a redirect response,
+hash in it. And indeed, it has been tested that monetdbd will return a redirect response,
 even when you provide an invalid password.)
 
 In practice this means usually only two authentications:
