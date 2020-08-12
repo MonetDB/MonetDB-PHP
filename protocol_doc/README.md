@@ -232,7 +232,7 @@ interactive queries.
 
         Xexport 2 400 200
 
-- **SQL Queries**: They always start with a lower-case `s` and must end with a `;` colon.
+- **SQL Queries**: They always start with a lower-case `s` and must end with a `;` semi-colon.
     With SQL queries you can either create, update, modify or delete data, modify the
     database schema, etc. or you can also set session properties, like the time zone.<br><br>
     Configure automatic conversion for date-time values in the current session:
@@ -299,7 +299,7 @@ While the ampersand (&) character is the first, it is followed by a number from
 ### 5.2.1. Data response - **&1**
 
 This is a response for a select query. For example let's see the response for query:
-(Don't forget that all queries have to start with an `s` character and end with a colon `;`.)
+(Don't forget that all queries have to start with an `s` character and end with a semi-colon `;`.)
 
     sselect
         "category",
@@ -614,7 +614,7 @@ the first line of the [data response](#521-data-response---1).
 ## 6.4. Multiple queries in a single message
 
 You can send multiple SQL queries in a single message, separated by
-colon `;` characters:
+semi-colon `;` characters:
 
     sSET SCHEMA mySchema; update table cats set name='asd';
     insert into myTable (value1, value2) values (1, 2);
