@@ -396,22 +396,20 @@ A sinlge line of 2 space-separated values:
 
 This response is returned for an SQL query which creates a prepared statement. Example query:
 
-    sPREPARE select * from cats where weight_kg > ?;
+    sPREPARE select name, birth_date, weight_kg from cats where weight_kg > ?;
 
 The response is very similar to the [Data response](#521-data-response---1). But here the
 data rows contain information about the types and limits of not just the placeholders
 used in the query, but also of the table columns involved:
 
-    &5 15 5 6 5
+    &5 15 4 6 4
     % .prepare,     .prepare,       .prepare,       .prepare,       .prepare,       .prepare # table_name
     % type, digits, scale,  schema, table,  column # name
     % varchar,      int,    int,    str,    str,    str # type
-    % 7,    2,      1,      0,      4,      13 # length
+    % 7,    1,      1,      0,      4,      10 # length
     [ "clob",       0,      0,      "",     "cats", "name"  ]
-    [ "decimal",    8,      2,      "",     "cats", "weight_kg"     ]
-    [ "clob",       0,      0,      "",     "cats", "category"      ]
     [ "date",       0,      0,      "",     "cats", "birth_date"    ]
-    [ "decimal",    20,     4,      "",     "cats", "net_worth_usd" ]
+    [ "decimal",    8,      2,      "",     "cats", "weight_kg"     ]
     [ "decimal",    8,      2,      NULL,   NULL,   NULL    ]
 
 The first line of the response consists of 5 space-separated values:
@@ -420,11 +418,11 @@ The first line of the response consists of 5 space-separated values:
 | --- | --- | --- |
 | 0 | &5 | Identifies the response type. (Prepared statement creation) |
 | 1 | 15 | The ID of the created prepared statement. This can be used in an `EXECUTE` statement. |
-| 2 | 5 | Row count |
+| 2 | 4 | Row count |
 | 3 | 6 | Column count |
-| 4 | 5 | Tuple count |
+| 4 | 4 | Tuple count |
 
-The original table had only 5 columns, but this response returned 6 data rows, as the
+The original query requested only 3 columns, but this response returned 4 data rows, as the
 last one is for the `?` placeholder. The additional type information of the
 placeholders is not really required if you implement a library for a typed
 language. Because than you can just ask the users to always pass the
