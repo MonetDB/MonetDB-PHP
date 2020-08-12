@@ -691,14 +691,15 @@ The second value (above `15`) is the ID of the created prepared statement. You
 can use that ID in an `EXECUTE` statement, which executes the prepared
 statement with the specified parameters. Example:
 
-    sEXECUTE 15 ("First\'Value", "Second\"Value");
+    sEXECUTE 15 ('First\'Value', 'Second\"Value');
 
 Please note that all values passed to the execute statement are type sensitive.
 You cannot pass numbers or true/false values as strings, but they have to be
 passed without quotes, example:
 
-    sEXECUTE 16 ("string", true, false, null, 3.141592653589, "another string");
+    sEXECUTE 16 ('2020-08-12', true, false, null, 3.141592653589, 'another string');
 
 All string values need to be escaped as discussed in chapter [Escaping](#61-escaping).
+Date values are also passed as strings.
 
 It is important that when an [error message](#54-error---) is returned, all session data are discarded. Which includes the prepared statements.
