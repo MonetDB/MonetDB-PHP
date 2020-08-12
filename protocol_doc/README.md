@@ -219,7 +219,8 @@ because this shows an error on the server side.
 # 4. Commands and queries in a nutshell
 
 After a successful authentication, the client can start to send requests to the server
-and read the responses. There are 2 main types of requests: Commands and queries.
+and read the responses. There are 3 main types of requests: Commands, queries and
+interactive queries.
 
 - **Commands**: They always start with an upper-case `X`. Can be used to configure properties
     of the current session, or to request the next page of a table response. Examples:<br><br>
