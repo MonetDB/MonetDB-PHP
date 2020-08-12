@@ -424,7 +424,7 @@ The first line of the response consists of 5 space-separated values:
 | 3 | 6 | Column count |
 | 4 | 5 | Tuple count |
 
-The original table had only 5 columns, but this response returned 6, as the
+The original table had only 5 columns, but this response returned 6 data rows, as the
 last one is for the `?` placeholder. The additional type information of the
 placeholders is not really required if you implement a library for a typed
 language. Because than you can just ask the users to always pass the
