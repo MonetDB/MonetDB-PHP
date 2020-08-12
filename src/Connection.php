@@ -207,7 +207,7 @@ class Connection {
             $pwHash = $challenge->HashPassword($this->password, $this->saltedHashAlgo);
             $upperSaltHash = strtoupper($this->saltedHashAlgo);
 
-            $this->Write("BIG:{$this->user}:{{$upperSaltHash}}{$pwHash}:sql:{$this->database}:");
+            $this->Write("LIT:{$this->user}:{{$upperSaltHash}}{$pwHash}:sql:{$this->database}:");
             
             $this->inputStream->LoadNextResponse();
             $inputStream = $this->inputStream->ReadNextLine();

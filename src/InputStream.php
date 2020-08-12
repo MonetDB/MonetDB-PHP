@@ -104,16 +104,12 @@ class InputStream {
     /**
      * A response is composed of one or more packets, where
      * the last packet has a special bit set.
-     * Read one for each call to this method until that's
-     * reached.
-     * This method adds exactly one packet to the packet
-     * buffer, or waits.
+     * This method loads and concatencates all packets
+     * into a message.
      *
-     * @param bool $discard If true, then don't store the pack in
-     * the buffer, just discard them.
      * @return void
      */
-    public function LoadNextResponse(bool $discard = false) {
+    public function LoadNextResponse() {
         $packets = [];
 
         do {

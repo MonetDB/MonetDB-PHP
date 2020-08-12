@@ -1,16 +1,16 @@
-MonetDB client-server protocol
-==============================
+MonetDB client-server protocol (MAPI)
+=====================================
 
-*(By Tamas Bolner, 2020-08)*
+*(By Tamas Bolner, 2020-08, reviewed by Sjoerd Mullender)*
 
-This document aims to summarize the key points of the TCP/IP-based
-client-server protocol between the MonetDB server and the clients
-connecting to it. The goal is to provide information for the
-development of future client applications.
+This document aims to summarize the key points of the text-based
+client-server protocol (version 9) between the MonetDB server and
+the clients connecting to it. The goal is to provide information
+for the development of future client applications.
 
 # Table of contents
 
-- [MonetDB client-server protocol](#monetdb-client-server-protocol)
+- [MonetDB client-server protocol (MAPI)](#monetdb-client-server-protocol-mapi)
 - [Table of contents](#table-of-contents)
 - [1. Overview](#1-overview)
 - [2. Messages and packets](#2-messages-and-packets)
@@ -23,14 +23,14 @@ development of future client applications.
   - [5.2. Query response - **&**](#52-query-response---)
     - [5.2.1. Data response - **&1**](#521-data-response---1)
     - [5.2.2. Modification results - **&2**](#522-modification-results---2)
-    - [5.2.3. Stats only - **&3**](#523-stats-only---3)
+    - [5.2.3. Stats only (schema query) - **&3**](#523-stats-only-schema-query---3)
     - [5.2.4. Transaction status - **&4**](#524-transaction-status---4)
     - [5.2.5. Prepared statement creation - **&5**](#525-prepared-statement-creation---5)
     - [5.2.6. Block response - **&6**](#526-block-response---6)
   - [5.3. Table header - **%**](#53-table-header---)
   - [5.4. Error - **!**](#54-error---)
   - [5.5. Tuple - **&#91;**](#55-tuple---)
-  - [5.6. Empty message (prompt)](#56-empty-message-prompt)
+  - [5.6. Prompt message](#56-prompt-message)
 - [6. SQL queries](#6-sql-queries)
   - [6.1. Escaping](#61-escaping)
   - [6.2. The tabular format of the data response](#62-the-tabular-format-of-the-data-response)
@@ -40,11 +40,18 @@ development of future client applications.
 
 # 1. Overview
 
-MonetDB has a main process, which usually listens on port 50000 for
-incoming connections. Each database runs on separate processes, spawned
-by the main. The client application connects only to the main process
-directly, which acts as a proxy and transfers the data packages in both
-directions between the client and the database it is connected to.
+MonetDB has a main process `monetdbd`, which listens on port 50000 by default for
+incoming connections. Each database runs on separate `mserver5` processes,
+started by the main.
+
+If the client application is connecting through a UNIX domain socket, then monetdbd
+will try to redirect the connection to mserver5 so that the client then talks directly
+to mserver5 and monetdbd is no longer involved.
+
+If the client is connecting through TCP/IP, then by default monetdbd will act
+as a proxy, transferring data packages between the client and the mserver5 processs.
+But it is possible to receive a redirect message from monetdbd, which asks the
+client to connect directly to an mserver5 instance.
 
 <img src="png/01_overview.png" alt="drawing" width="640"/>
 
@@ -119,15 +126,16 @@ The `:` (colon) characters are delimiters for 6 fields:
 
 | Value | Description |
 | --- | --- |
-| bDRlm4zbfhxAI23 | Random string to be used as salt for the hashing of the password. |
+| bDRlm4zbfhxAI23 | Random string to be used as salt (randomizer) for the hashing/encryption of the password. |
 | merovingian | Type of the endpoint. `merovingian` is the main process, `mserver` is a specific database process. |
 | 9 | Protocol version |
-| PROT10, RIPEMD160, SHA512, SHA384, SHA256, SHA224, SHA1 | Comma-separated list of accepted algorithms for the salted hashing. |
-| LIT | ?? |
+| PROT10, RIPEMD160, SHA512, SHA384, SHA256, SHA224, SHA1 | Comma-separated list of protocol options. We will only discuss the hash algorithms, used for the salted hashing. |
+| LIT | Possible values are `LIT` and `BIG`. Tells whether the server is in a little endian or big endian environment. |
 | SHA512 | The accepted algorithm for the password hashing. |
 
-In a nutshell, the client sends a hash of the user password to the server, and that responds
-whether it is correct or not for a specific user.
+We will only discuss the hash-based protocols. In a nutshell, the client sends a hash
+of the user password to the server, and that responds whether it is correct or not
+for a specific user.
 
 The password is hashed twice. First by the (usually stronger) `password hash`, and then by
 the `salted hash`. The algorithm used for the salted hashing can be chosen by the client
@@ -143,16 +151,15 @@ password hashing, then the formula for getting the hash string is the following:
 Where the hash functions output hexadecimal values. After the client calculated the hash,
 it sends it in a message like the following:
 
-    BIG:monetdb:{SHA1}b8cb82cca07f379e25e99262e3b4b70054546136:sql:myDatabase:
+    LIT:monetdb:{SHA1}b8cb82cca07f379e25e99262e3b4b70054546136:sql:myDatabase:
 
 Which is also separated by colons and the meanings of the values are:
 
 | Value | Description |
 | --- | --- |
-| BIG | ?? |
+| LIT | Possible values are `LIT` and `BIG`. Tells whether the client is in a little endian or big endian environment. (This seems to have no effect. The server just ignores it, and uses its own endianness.) |
 | monetdb | User name |
-| {SHA1} | The name of the salted hash algorithm chosen by the client. It has to be uppercase and inside curly brackets. |
-| b8cb82cca07f379e25e99262e3b4b70054546136 | The hash of the password, generated by the above formula. |
+| {SHA1}b8cb82cca07f379e25<br>e99262e3b4b70054546136 | This value is composed of two parts. First in curly brackets stands the upper-case name of the chosen hashing algorithm for the salted hashing. Then comes the hash of the password, generated by the above formula.
 | sql | The requested query language. |
 | myDatabase | The name of the database. |
 
@@ -163,7 +170,7 @@ The next paragraph enumerates the valid responses of the server.
 
 After the client has sent the hashed password to the server, it can receive 3 kinds of responses.
 
-- An empty response (called "prompt") if the authentication was successful. See section [Messages and packets](#2-messages-and-packets) about the empty message.
+- A "prompt" response if the authentication was successful. See section [Prompt message](#56-prompt-message) for more information.
 - An error message if the authentication failed. Example:
 
         !InvalidCredentialsException:checkCredentials:invalid credentials for user 'monetdb'
@@ -180,11 +187,21 @@ After the client has sent the hashed password to the server, it can receive 3 ki
 
 ## 3.2. The Merovingian redirect
 
-The `Merovingian redirect` is not an actual redirect, but a request for the repetition of the authentication
+The `Merovingian redirect` can be a real redirect, when the client is asked for connecting
+to a new host and port, but this case is not well documented and depend of special server
+configurations, therefore it will be ignored in this document.
+
+A more common case of the `Merovingian redirect` is a request for the repetition of the authentication
 process. It happens in the existing TCP connection. No new connections are created. This repetition is
-required because the client has to authenticate at all the processes it is proxied through and also at the
-destination database process. (See chapter [Redirect](#51-redirect---) for more information on
+required only because of backward compatibility reasons. The first server challenge and response is
+from `monetdbd` (main server process), but it doesn't actually do an authentication, as it has no
+access to the databases that store the password hashes. The second authentication is a real one,
+which is done by an `mserver5` instance. (See chapter [Redirect](#51-redirect---) for more information on
 the response format.)
+
+(Since the first authentication is a fake one, you don't even need to send a proper password
+has to it. And indeed, it has been tested that monetdbd will return a redirect response,
+even when you provide an invalid password.)
 
 In practice this means usually only two authentications:
 
@@ -232,6 +249,13 @@ and read the responses. There are 2 main types of requests: Commands and queries
 
     Notice that the query can contain EOL characters.
 
+- **Interactive SQL queries**: These start with an upper-case `S`. Currently only
+    `mclient` uses them. You can send an incomplete SQL query to the server,
+    and then it will respond with an `\001\002\n` prompt, which means that it
+    needs more data to execute the query. You can either complete it with
+    SQL clauses that end in a semi-colon, or you can also send an empty message,
+    which here means a "flush" operation, indicating that there are no more data.
+
 # 5. Response types
 
 Responses are messages sent from the server to the client, that answer requests
@@ -247,11 +271,14 @@ character.
 | **!** (exclamation  mark) | Error | The response is an error message. |
 | **[** (bracket) | Tuple | Contains tuples, a row of a tabular data set. |
 
-In addition to these, a valid response is also the `empty message`. See chapter
-[Messages and packets](#2-messages-and-packets) for more information.
+In addition to these, a valid response is also the `prompt message`. See chapter
+[Prompt message](#56-prompt-message) for more information.
 
 Each message type can return different kinds of information in different formats.
-The next chapters will discuss these formats in detail.
+The next chapters will discuss these formats in detail. The first line of each
+response consists of multiple fields. New fields can be added in the future,
+therefore it is recommended to ignore the extra ones, and only throw an error
+if the field count is less than expected.
 
 ## 5.1. Redirect - **^**
 
@@ -285,7 +312,7 @@ This is a response for a select query. For example let's see the response for qu
 
 The first row of the response tells with the `&1` beginning that this is a data response to a query.
 The `&1` is followed by a list of space-separated values, which will be discussed in detail below.
-After the first line come 4 header lines and then the data rows.
+After the first line come 4 (or 5, se below) header lines and then the data rows.
 
 <img src="png/05_a_data_response.png" alt="drawing" width="640"/>
 
@@ -294,17 +321,17 @@ The first line contains 9 fields:
 | Index | Sample value | Description |
 | --- | --- | --- |
 | 0 | &1 | Identifies the response type. (data response to a query) |
-| 1 | 0 | Query ID. Can be used later to reference the query in the same session. For example in an `export` command. |
-| 2 | 3 | Number of rows in the full response. This includes those which didn't fit into this message. |
-| 3 | 4 | ?? |
-| 4 | 3 | ?? |
-| 5 | 2107 | Execution time in microseconds. (??) |
-| 6 | 246 | Query parsing time in microseconds. (??) |
-| 7 | 143 | ?? |
-| 8 | 19 | ?? |
+| 1 | 0 | Result ID. Can be used later to reference the result set in the same session. For example in an `export` command. |
+| 2 | 3 | Number of rows in the full result set. This includes those which didn't fit into this message. |
+| 3 | 4 | Column count |
+| 4 | 3 | Number of rows in this message only. |
+| 5 | 2107 | Query ID. A global ID which is also used in functions such as sys.querylog_catalog(). |
+| 6 | 246 | Query time in microseconds. |
+| 7 | 143 | MAL optimizer time in microseconds. |
+| 8 | 19 | SQL optimizer time in microseconds. |
 
-The 4 header lines describe the columns of the response. Each line ends with the name of the header
-which helps to avoid confusion, although their order is always the same.
+The 4 (or 5, se below) header lines describe the columns of the response. Each line ends with the name of the header.
+Use the header names to identify them, don't depend on the order.
 
 | Order | Header name | Description |
 | --- | --- | --- |
@@ -312,6 +339,7 @@ which helps to avoid confusion, although their order is always the same.
 | 2 | name | The name of the column. |
 | 3 | type | The SQL type of the column. |
 | 4 | length | This length value can help displaying the table in a console window. (Fixed-length character display) |
+| 5 | typesizes | Optional. Only returned when using the ODBC driver and sent the command `Xsizeheader 1`. Contains the scale and precision (two space separated values) for the types of the columns. |
 
 Since the string values in the tuples contain escaped values (like `"\t"`), you can freely split or scan through the rows
 by looking for tabulator characters or for their combinations with the commas.
@@ -327,14 +355,14 @@ It is a single line, without additional lines, composed of 7 space-separated val
 | Index | Sample value | Description |
 | --- | --- | --- |
 | 0 | &2 | Identifies the response type. (Data modification result) |
-| 1 | 15 | Number of inserted or affected rows. |
-| 2 | -1 | ?? |
-| 3 | 2113 | Execution time in microseconds (??) |
-| 4 | 439 | Query parsing time in microseconds (??) |
-| 5 | 1596 | ?? |
-| 6 | 234 | ?? |
+| 1 | 15 | Number of affected or inserted rows. |
+| 2 | -1 | Last auto-increment ID for an insert statement. (Or -1 if none) |
+| 3 | 2113 | Query ID. A global ID which is also used in functions such as sys.querylog_catalog(). |
+| 4 | 439 | Query time in microseconds. |
+| 5 | 1596 | MAL optimizer time in microseconds. |
+| 6 | 234 | SQL optimizer time in microseconds. |
 
-### 5.2.3. Stats only - **&3**
+### 5.2.3. Stats only (schema query) - **&3**
 
 This response is usually returned when a table or a schema is created,
 and for statements like `SET TIME ZONE` or `SET SCHEMA`. Example response:
@@ -346,8 +374,8 @@ A sinlge line of 3 space-separated values:
 | Index | Sample value | Description |
 | --- | --- | --- |
 | 0 | &3 | Identifies the response type. (Stats only) |
-| 1 | 733 | Execution time in microseconds (??) |
-| 2 | 79 | Query parsing time in microseconds (??) |
+| 1 | 733 | Query time in microseconds. |
+| 2 | 79 | MAL optimizer time in microseconds. |
 
 ### 5.2.4. Transaction status - **&4**
 
@@ -370,19 +398,37 @@ This response is returned for an SQL query which creates a prepared statement. E
 
     sPREPARE select * from cats where weight_kg > ?;
 
-An example reponse:
+The response is very similar to the [Data response](#521-data-response---1). But here the
+data rows contain information about the types and limits of not just the placeholders
+used in the query, but also of the table columns involved:
 
     &5 15 5 6 5
+    % .prepare,     .prepare,       .prepare,       .prepare,       .prepare,       .prepare # table_name
+    % type, digits, scale,  schema, table,  column # name
+    % varchar,      int,    int,    str,    str,    str # type
+    % 7,    2,      1,      0,      4,      13 # length
+    [ "clob",       0,      0,      "",     "cats", "name"  ]
+    [ "decimal",    8,      2,      "",     "cats", "weight_kg"     ]
+    [ "clob",       0,      0,      "",     "cats", "category"      ]
+    [ "date",       0,      0,      "",     "cats", "birth_date"    ]
+    [ "decimal",    20,     4,      "",     "cats", "net_worth_usd" ]
+    [ "decimal",    8,      2,      NULL,   NULL,   NULL    ]
 
-The response consists of 5 space-separated values:
+The first line of the response consists of 5 space-separated values:
 
 | Index | Sample value | Description |
 | --- | --- | --- |
 | 0 | &5 | Identifies the response type. (Prepared statement creation) |
 | 1 | 15 | The ID of the created prepared statement. This can be used in an `EXECUTE` statement. |
-| 2 | 5 | ?? |
-| 3 | 6 | ?? |
-| 4 | 5 | ?? |
+| 2 | 5 | Row count |
+| 3 | 6 | Column count |
+| 4 | 5 | Tuple count |
+
+The original table had only 5 columns, but this response returned 6, as the
+last one is for the `?` placeholder. The additional type information of the
+placeholders is not really required if you implement a library for a typed
+language. Because than you can just ask the users to always pass the
+parameters in their proper types, otherwise prepare for an error message.
 
 ### 5.2.6. Block response - **&6**
 
@@ -400,8 +446,8 @@ The first line of the response consists of 5 space-separated values:
 | Index | Sample value | Description |
 | --- | --- | --- |
 | 0 | &6 | Identifies the response type. (Block response) |
-| 1 | 2 | Query ID. This ID was referenced in the export command too. |
-| 2 | 11 | ?? |
+| 1 | 2 | Result ID. This ID was referenced in the export command too. |
+| 2 | 11 | Column count |
 | 3 | 200 | Number of rows in this current response. (not total) |
 | 4 | 600 | The offset (index) of the first row in the response. |
 
@@ -429,11 +475,28 @@ Examples:
 
 A line that contains tabular data. Discussed in chapter [Data response](#521-data-response---1).
 
-## 5.6. Empty message (prompt)
+## 5.6. Prompt message
 
-It is returned only for a successful authentication request. See chapter: [Authentication](#3-authentication)
+It is returned for a successful authentication request and in some special
+cases. See chapter: [Authentication](#3-authentication)
 
-An empty message consists only of the 2-byte header, containing the value: 0x0001
+There are 4 kinds of prompts:
+
+- `Empty message`: consists only of the 2-byte header, containing the value: 0x0001, without any payload.
+    This is returned for successful authentication.
+- `\001\001\n`: This is an alternative for the "empty message", but the server never sends it in the current version.
+- `\001\002\n`: This means the server needs more data to complete the SQL
+    query. The response from the client would be either more data or a
+    "flush" (empty message) to indicate there is no more.
+    Used only in Interactive SQL queries.
+- `\001\003\n`: If the client has indicated during initial connection negotiation that
+    it can deal with reading/writing files on behalf of the server (`COPY
+    INTO table FROM 'some file' ON CLIENT` - currently only implemented in
+    mclient) then the server could send a prompt "\001\003\n" which is
+    followed by the request the server would like to put to the client:
+    - `r offset file`: Read text file with offset.
+    - `rb file`: Read binary file.
+    - `w file`: Write text file.
 
 # 6. SQL queries
 
@@ -531,10 +594,15 @@ how many data rows should be returned in the [first response](#521-data-response
 
     Xreply_size 200
 
+Using the `reply_size` command or a `LIMIT` clause are not the same. With `reply_size`
+the full data set is rendered and stored on the server, but only chunks of
+that data will be returned to the client. While `LIMIT` results in a different query
+optimization and execution, and the server won't store a complete result set.
+
 Please see the command format in chapter [Commands and queries in a nutshell](#4-commands-and-queries-in-a-nutshell).
 
 Then for each remaining chunk of data, you need to execute the `export` command. Example
-for requesting the rows 400-599 from the query with ID 2:
+for requesting the rows 400-599 from the result set with ID 2:
 
     Xexport 2 400 200
 
@@ -557,6 +625,10 @@ Then the response will be a single message, composed of multiple lines:
     &3 733 79
     &2 15 -1 2113 439 1596 234
     &2 1 -1 1232 322 890 150
+
+The requests can even contain multiple select and multiple prepare
+queries. Then all those results will be concatenated in the
+response, honoring the `export_size` per query.
 
 # 7. Prepared statements
 
@@ -617,7 +689,7 @@ Example response:
     &5 15 5 6 5
 
 The second value (above `15`) is the ID of the created prepared statement. You
-can use that ID in an `EXECUTE` statement, which executed the prepared
+can use that ID in an `EXECUTE` statement, which executes the prepared
 statement with the specified parameters. Example:
 
     sEXECUTE 15 ("First\'Value", "Second\"Value");
@@ -626,7 +698,7 @@ Please note that all values passed to the execute statement are type sensitive.
 You cannot pass numbers or true/false values as strings, but they have to be
 passed without quotes, example:
 
-    sEXECUTE 15 ("string", true, false, null, 3.141592653589, "another string");
+    sEXECUTE 16 ("string", true, false, null, 3.141592653589, "another string");
 
 All string values need to be escaped as discussed in chapter [Escaping](#61-escaping).
 
