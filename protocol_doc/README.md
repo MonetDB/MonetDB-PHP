@@ -554,7 +554,7 @@ all special characters, i.e. to use a single function for both purposes:
 | Tabulator | U+0009 | `\t` |
 | Carriage return | U+000D | `\r` |
 | Line feed | U+000A | `\n` |
-| Form feed | | `\f` |
+| Form feed | U+000C | `\f` |
 | Null character | U+0000 | `\000` |
 | All non-printable characters from the ASCII range | - | `\...` |
 
