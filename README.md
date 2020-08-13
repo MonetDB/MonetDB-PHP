@@ -51,7 +51,7 @@ composer require tbolner/monetdb-php
 Or add the following line to your `composer.json` file's `require` section and then execute `composer update`:
 
 ```
-"tbolner/monetdb-php": "^1.0"
+"tbolner/monetdb-php": "^1.1"
 ```
 
 # Usage without installation
