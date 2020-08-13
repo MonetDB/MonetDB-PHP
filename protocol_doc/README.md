@@ -166,6 +166,12 @@ Which is also separated by colons and the meanings of the values are:
 After the client sent the authentication message, it must read a message from the server.
 The next paragraph enumerates the valid responses of the server.
 
+Optionally the client can allow the server the send/receive file
+transfer requests to/from the client, by adding a `FILETRANS` at the
+end, the following way:
+
+    LIT:monetdb:{SHA1}b8cb82cca07f379e25e99262e3b4b70054546136:sql:myDatabase:FILETRANS:
+
 ## 3.1. Possible responses to an authentication request
 
 After the client has sent the hashed password to the server, it can receive 3 kinds of responses.
