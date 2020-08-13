@@ -340,7 +340,7 @@ Use the header names to identify them, don't depend on the order.
 | 2 | name | The name of the column. |
 | 3 | type | The SQL type of the column. |
 | 4 | length | This length value can help displaying the table in a console window. (Fixed-length character display) |
-| 5 | typesizes | Optional. Only returned when using the ODBC driver and sent the command `Xsizeheader 1`. Contains the scale and precision (two space separated values) for the types of the columns. |
+| 5 | typesizes | Optional. Only returned if enabled by the command `Xsizeheader 1`. Contains the scale and precision (two space separated values) for the types of the columns. Currently used only by the ODBC driver. |
 
 Since the string values in the tuples contain escaped values (like `"\t"`), you can freely split or scan through the rows
 by looking for tabulator characters or for their combinations with the commas.
@@ -554,7 +554,13 @@ all special characters, i.e. to use a single function for both purposes:
 | Tabulator | U+0009 | `\t` |
 | Carriage return | U+000D | `\r` |
 | Line feed | U+000A | `\n` |
+| Form feed | | `\f` |
 | Null character | U+0000 | `\000` |
+| All non-printable characters from the ASCII range | - | `\...` |
+
+The `\...` stands for a back-slash, followed by 3 octal (0-7) digits.
+The unicode code of the character in octal.
+For example: `\011`, `\035`, `\240`.
 
 Notice that `\000` is used, instead of `\0`. A single octal value can fail if
 it is followed by numbers in the text, for example: "1234`\0`567". Which can
@@ -610,6 +616,10 @@ has no header lines, but data only.
 
 You can know the number of total rows in the response from the third field (index 2) of
 the first line of the [data response](#521-data-response---1).
+
+Data sets are stored on the server side until the client closes the session, or until an error message is returned from the server. There's a command for closing a result set before any of those events by passing only its ID:
+
+    Xclose 2
 
 ## 6.4. Multiple queries in a single message
 
@@ -703,3 +713,7 @@ All string values need to be escaped as discussed in chapter [Escaping](#61-esca
 Date values are also passed as strings.
 
 It is important that when an [error message](#54-error---) is returned, all session data are discarded. Which includes the prepared statements.
+
+When you don't need a prepared statement anymore, you can release it with the following command, passing its ID:
+
+    Xrelease 15
