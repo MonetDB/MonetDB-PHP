@@ -176,7 +176,7 @@ end, the following way:
 
 ## 3.1. Possible responses to an authentication request
 
-After the client has sent the hashed password to the server, it can receive 3 kinds of responses.
+After the client has sent the hashed password to the server, it can receive 4 kinds of responses.
 
 - A "prompt" response if the authentication was successful. See section [Prompt message](#56-prompt-message) for more information.
 - An error message if the authentication failed. Example:
@@ -193,13 +193,13 @@ After the client has sent the hashed password to the server, it can receive 3 ki
     
     Detection: the response starts with the `"^mapi:merovingian:"` string.
 
+- A request for a real redirect. See section [Redirect](#51-redirect---).
+
 ## 3.2. The Merovingian redirect
 
-The `Merovingian redirect` can be a real redirect, when the client is asked for connecting
-to a new host and port. For this see an example in section [Redirect](#51-redirect---).
-
-A more common case of the `Merovingian redirect` is a request for the repetition of the authentication
-process. It happens in the existing TCP connection. No new connections are created. This repetition is
+The `Merovingian redirect` is a request for the repetition of the authentication
+process. It happens in the existing TCP connection (contrary to a real [Redirect](#51-redirect---)).
+No new connections are created. This repetition is
 required only because of backward compatibility reasons. The first server challenge and response is
 from `monetdbd` (main server process), but it doesn't actually do an authentication, as it has no
 access to the databases that store the password hashes. The second authentication is a real one,
@@ -488,6 +488,10 @@ Examples:
     !42S02!SELECT: no such table 'notexists'
 
     !42000!syntax error, unexpected IDENT in: "
+
+The error message sometimes contains no error code:
+
+    !InvalidCredentialsException:checkCredentials:invalid credentials for user 'monetdb'
 
 ## 5.5. Tuple - **&#91;**
 
