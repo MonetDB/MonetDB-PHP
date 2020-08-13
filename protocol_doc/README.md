@@ -151,9 +151,11 @@ password hashing, then the formula for getting the hash string is the following:
 Where the hash functions output hexadecimal values. After the client calculated the hash,
 it sends it in a message like the following:
 
-    LIT:monetdb:{SHA1}b8cb82cca07f379e25e99262e3b4b70054546136:sql:myDatabase:
+    LIT:monetdb:{SHA1}b8cb82cca07f379e25e99262e3b4b70054546136:sql:myDatabase:\n
 
-Which is also separated by colons and the meanings of the values are:
+The `\n` at the end means a line feed character. (It seems to work well without that too,
+but mclient puts a newline there.) The line consists of colon-separated
+values with the following meanings:
 
 | Value | Description |
 | --- | --- |
@@ -170,7 +172,7 @@ Optionally the client can allow the server the send/receive file
 transfer requests to/from the client, by adding a `FILETRANS` at the
 end, the following way:
 
-    LIT:monetdb:{SHA1}b8cb82cca07f379e25e99262e3b4b70054546136:sql:myDatabase:FILETRANS:
+    LIT:monetdb:{SHA1}b8cb82cca07f379e25e99262e3b4b70054546136:sql:myDatabase:FILETRANS:\n
 
 ## 3.1. Possible responses to an authentication request
 
@@ -194,8 +196,7 @@ After the client has sent the hashed password to the server, it can receive 3 ki
 ## 3.2. The Merovingian redirect
 
 The `Merovingian redirect` can be a real redirect, when the client is asked for connecting
-to a new host and port, but this case is not well documented and depend of special server
-configurations, therefore it will be ignored in this document.
+to a new host and port. For this see an example in section [Redirect](#51-redirect---).
 
 A more common case of the `Merovingian redirect` is a request for the repetition of the authentication
 process. It happens in the existing TCP connection. No new connections are created. This repetition is
@@ -289,12 +290,24 @@ if the field count is less than expected.
 
 ## 5.1. Redirect - **^**
 
-This response has been discussed already in chapter [The Merovingian redirect](#32-the-merovingian-redirect).
-Redirect messages always start with the `^` (caret) character. An example response:
+Redirect messages always start with the `^` (caret) character.
+This can be a real redirect, which instructs the client to close the current
+connection and open another one on a specific host/port. Example:
+
+    ^mapi:monetdb://localhost:50001/test?lang=sql&user=monetdb
+
+| Sample value | Description |
+| --- | --- |
+| ^mapi:monetdb:// | This prefix identifies the redirect type |
+| localhost | Host name or IP address. (It can be IPv6) |
+| 50001 | Port. |
+| test | Database name. |
+| sql | Query language to request during the authentication. |
+| monetdb | User name to specify during the authentication. |
+
+Or it can mean a [Merovingian redirect](#32-the-merovingian-redirect). Example:
 
     ^mapi:merovingian://proxy?database=myDatabase
-
-?? Investigate if there are different kinds of redirects.
 
 ## 5.2. Query response - **&**
 
@@ -425,9 +438,9 @@ The first line of the response consists of 5 space-separated values:
 | --- | --- | --- |
 | 0 | &5 | Identifies the response type. (Prepared statement creation) |
 | 1 | 15 | The ID of the created prepared statement. This can be used in an `EXECUTE` statement. |
-| 2 | 4 | Row count |
+| 2 | 4 | Total row count in the result set. |
 | 3 | 6 | Column count |
-| 4 | 4 | Tuple count |
+| 4 | 4 | Row count in current response only. |
 
 The original query requested only 3 columns, but this response returned 4 data rows, as the
 last one is for the `?` placeholder. The additional type information of the

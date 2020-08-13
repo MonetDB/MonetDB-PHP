@@ -207,19 +207,14 @@ class Connection {
             $pwHash = $challenge->HashPassword($this->password, $this->saltedHashAlgo);
             $upperSaltHash = strtoupper($this->saltedHashAlgo);
 
-            $this->Write("LIT:{$this->user}:{{$upperSaltHash}}{$pwHash}:sql:{$this->database}:");
+            $this->Write("LIT:{$this->user}:{{$upperSaltHash}}{$pwHash}:sql:{$this->database}:\n");
             
             $this->inputStream->LoadNextResponse();
             $inputStream = $this->inputStream->ReadNextLine();
             if (InputStream::IsResponse($inputStream, InputStream::MSG_REDIRECT, "mapi:merovingian:")) {
                 /*
-                    Only the main process of MonetDB opens ports to listen on, and it spawns
-                    separate sub-processes for each database.
-                    The main process acts as a proxy and it forwards the queries to the
-                    processes of the databases. For security reasons the user has to 
-                    authenticate not just at the main process, but also at the
-                    sub-process too. This repetition of the authentication process is
-                    called a "Merovingian redirect".
+                    See doc:
+                    https://github.com/MonetDB/MonetDB-PHP/tree/master/protocol_doc#32-the-merovingian-redirect
                 */
                 continue;
             }

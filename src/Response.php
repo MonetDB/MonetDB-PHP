@@ -192,8 +192,8 @@ class Response implements \Iterator {
                         If not all rows did fit into the window,
                         request the next batch.
                     */
-                    $diff = $this->queryStatusRecord->GetRowCount() - $this->rowCount;
-                    $queryID = $this->queryStatusRecord->GetQueryID();
+                    $diff = $this->queryStatusRecord->GetTotalRowCount() - $this->rowCount;
+                    $queryID = $this->queryStatusRecord->GetResultID();
 
                     if ($diff > 0) {
                         $size = min($diff, $this->connection->GetMaxReplySize());
@@ -237,7 +237,7 @@ class Response implements \Iterator {
                         responses just get ignored.
                     */
                     if ($this->queryStatusRecord !== null) {
-                        if ($this->queryStatusRecord->GetQueryID() != $status->GetQueryID()) {
+                        if ($this->queryStatusRecord->GetResultID() != $status->GetResultID()) {
                             $this->ignoreTuples = true;
                         }
                     }
@@ -291,7 +291,7 @@ class Response implements \Iterator {
                         continue;
                     }
 
-                    if ($this->queryStatusRecord->GetQueryID() != $status->GetQueryID()) {
+                    if ($this->queryStatusRecord->GetResultID() != $status->GetResultID()) {
                         $this->ignoreTuples = true;
                         continue;
                     }

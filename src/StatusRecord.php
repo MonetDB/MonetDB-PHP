@@ -42,10 +42,29 @@ class StatusRecord {
     private $queryTypeDescription = null;
 
     /**
-     * The ID of the query, which can be used for
+     * The ID of the result set, which can be used for
      * resuming it, using the "export" command.
+     * 
+     * @var int
+     */
+    private $resultID = null;
+
+    /**
+     * Query ID. A global ID which is also used in
+     * functions such as sys.querylog_catalog().
+     *
+     * @var int
      */
     private $queryID = null;
+
+    /**
+     * The last automatically generated ID by
+     * an insert statement. (Usually auto_increment)
+     * NULL if none.
+     *
+     * @var int
+     */
+    private $lastInsertID = null;
 
     /**
      * The time the server spent on executing
@@ -53,15 +72,21 @@ class StatusRecord {
      *
      * @var float
      */
-    private $executionTime = null;
+    private $queryTime = null;
 
     /**
-     * The time it took to parse and optimize
-     * the query.
+     * SQL optimizer time in milliseconds.
      *
      * @var float
      */
-    private $queryParsingTime = null;
+    private $sqlOptimizerTime = null;
+
+    /**
+     * MAL optimizer time in milliseconds.
+     *
+     * @var float
+     */
+    private $malOptimizerTime = null;
 
     /**
      * The number of rows updated or inserted.
@@ -71,7 +96,17 @@ class StatusRecord {
     private $affectedRows = null;
 
     /**
-     * The number of rows in the response.
+     * The total number of rows in the result set.
+     * This includes those rows too, which are not
+     * in the current response.
+     *
+     * @var int
+     */
+    private $totalRowCount = null;
+
+    /**
+     * The number of rows (tuples) in the current
+     * response only.
      *
      * @var int
      */
@@ -96,6 +131,22 @@ class StatusRecord {
     private $autoCommitState = null;
 
     /**
+     * Column count. If the response contains tabular data,
+     * then this tells the number of columns.
+     *
+     * @var int
+     */
+    private $columnCount = null;
+
+    /**
+     * The index (offset) of the first row in
+     * a block response. (For an "export" command.)
+     *
+     * @var int
+     */
+    private $exportOffset = null;
+
+    /**
      * The server always responds with a status line to a query,
      * which tells data like the time spent on it, or the number
      * of records affected, etc.
@@ -108,32 +159,44 @@ class StatusRecord {
     {
         if ($queryType == InputStream::Q_TABLE) {
             $this->queryType = "table";
-            $this->queryTypeDescription = "Select query";
+            $this->queryTypeDescription = "Data response";
             $fields = $this->ParseFields($line, 8);
-            $this->queryID = (int)$fields[0];
-            $this->rowCount = (int)$fields[1];
-            $this->executionTime = $fields[4] / 1000;
-            $this->queryParsingTime = $fields[5] / 1000;
+            $this->resultID = (int)$fields[0];
+            $this->totalRowCount = (int)$fields[1];
+            $this->columnCount = (int)$fields[2];
+            $this->rowCount = (int)$fields[3];
+            $this->queryID  = (int)$fields[4];
+            $this->queryTime = $fields[5] / 1000;
+            $this->malOptimizerTime = $fields[6] / 1000;
+            $this->sqlOptimizerTime = $fields[7] / 1000;
         } else if ($queryType == InputStream::Q_BLOCK) {
             $this->queryType = "block";
-            $this->queryTypeDescription = "Continue a select query";
+            $this->queryTypeDescription = "Continue a data response";
             $fields = $this->ParseFields($line, 4);
-            $this->queryID = (int)$fields[0];
+            $this->resultID = (int)$fields[0];
+            $this->columnCount = (int)$fields[1];
             $this->rowCount = (int)$fields[2];
+            $this->exportOffset = (int)$fields[3];
         } else if ($queryType == InputStream::Q_CREATE) {
             // "SET TIME ZONE INTERVAL ..." returns this as well.
             $this->queryType = "schema";
-            $this->queryTypeDescription = "Modify schema";
+            $this->queryTypeDescription = "Stats only (schema)";
             $fields = $this->ParseFields($line, 2);
-            $this->executionTime = $fields[0] / 1000;
-            $this->queryParsingTime = $fields[1] / 1000;
+            $this->queryTime = $fields[0] / 1000;
+            $this->malOptimizerTime = $fields[1] / 1000;
         } else if ($queryType == InputStream::Q_UPDATE) {
             $this->queryType = "update";
             $this->queryTypeDescription = "Update or insert rows";
             $fields = $this->ParseFields($line, 6);
             $this->affectedRows = (int)$fields[0];
-            $this->executionTime = $fields[2] / 1000;
-            $this->queryParsingTime = $fields[3] / 1000;
+            $this->lastInsertID = (int)$fields[1];
+            if ($this->lastInsertID < 0) {
+                $this->lastInsertID = null;
+            }
+            $this->queryID = (int)$fields[2];
+            $this->queryTime = $fields[3] / 1000;
+            $this->malOptimizerTime = $fields[4] / 1000;
+            $this->sqlOptimizerTime = $fields[5] / 1000;
         } else if ($queryType == InputStream::Q_TRANSACTION) {
             $this->queryType = "transaction";
             $fields = $this->ParseFields($line, 1);
@@ -149,6 +212,9 @@ class StatusRecord {
             $this->queryTypeDescription = "A prepared statement has been created.";
             $fields = $this->ParseFields($line, 4);
             $this->preparedStatementID = (int)$fields[0];
+            $this->totalRowCount = (int)$fields[1];
+            $this->columnCount = (int)$fields[2];
+            $this->rowCount = (int)$fields[3];
         } else {
             throw new MonetException("Unknown reply form MonetDB:\n{$line}\n");
         }
@@ -168,7 +234,9 @@ class StatusRecord {
      */
     private function ParseFields(string $line, int $count): array {
         $parts = explode(" ", substr(trim($line), 3));
-        if (count($parts) != $count) {
+
+        // More fields is not a problem. Later protocol versions can add new ones.
+        if (count($parts) < $count) {
             throw new MonetException("Invalid response from MonetDB. Status response has invalid number of "
                 ."fields. '{$count}' is expected:\n{$line}\n");
         }
@@ -204,20 +272,29 @@ class StatusRecord {
      *
      * @return float|null
      */
-    public function GetExecutionTime(): ?float
+    public function GetQueryTime(): ?float
     {
-        return $this->executionTime;
+        return $this->queryTime;
     }
 
     /**
-     * The time it took to parse and optimize
-     * the query. In milliseconds.
+     * SQL optimizer time in milliseconds.
      *
      * @return float|null
      */
-    public function GetQueryParsingTime(): ?float
+    public function GetSqlOptimizerTime(): ?float
     {
-        return $this->queryParsingTime;
+        return $this->sqlOptimizerTime;
+    }
+
+    /**
+     * MAL optimizer time in milliseconds.
+     *
+     * @return float|null
+     */
+    public function GetMalOptimizerTime(): ?float
+    {
+        return $this->malOptimizerTime;
     }
 
     /**
@@ -231,13 +308,15 @@ class StatusRecord {
     }
 
     /**
-     * The number of rows in the response.
+     * The total number of rows in the result set.
+     * This includes those rows too, which are not
+     * in the current response.
      *
      * @return integer|null
      */
-    public function GetRowCount(): ?int
+    public function GetTotalRowCount(): ?int
     {
-        return $this->rowCount;
+        return $this->totalRowCount;
     }
 
     /**
@@ -253,24 +332,56 @@ class StatusRecord {
             $response[] = "Action: {$this->queryTypeDescription}";
         }
 
-        if ($this->executionTime !== null) {
-            $response[] = "Execution time: {$this->executionTime} ms";
+        if ($this->queryID !== null) {
+            $response[] = "Query ID (global): {$this->queryID}";
         }
 
-        if ($this->queryParsingTime !== null) {
-            $response[] = "Query parsing time: {$this->queryParsingTime} ms";
+        if ($this->resultID !== null) {
+            $response[] = "Result ID: {$this->resultID}";
+        }
+
+        if ($this->lastInsertID !== null) {
+            $response[] = "Last insert ID: {$this->lastInsertID}";
+        }
+
+        if ($this->queryTime !== null) {
+            $response[] = "Query time: {$this->queryTime} ms";
+        }
+
+        if ($this->sqlOptimizerTime !== null) {
+            $response[] = "SQL optimizer time: {$this->sqlOptimizerTime} ms";
+        }
+
+        if ($this->malOptimizerTime !== null) {
+            $response[] = "Mal optimizer time: {$this->malOptimizerTime} ms";
         }
 
         if ($this->affectedRows !== null) {
             $response[] = "Affected rows: {$this->affectedRows}";
         }
 
+        if ($this->totalRowCount !== null) {
+            $response[] = "Total rows: {$this->totalRowCount}";
+        }
+
         if ($this->rowCount !== null) {
-            $response[] = "Rows: {$this->rowCount}";
+            $response[] = "Rows in current response: {$this->rowCount}";
+        }
+
+        if ($this->columnCount !== null) {
+            $response[] = "Column count: {$this->columnCount}";
+        }
+
+        if ($this->autoCommitState !== null) {
+            $response[] = "Auto-commit state: {$this->autoCommitState}";
         }
 
         if ($this->preparedStatementID !== null) {
             $response[] = "Prepared statement ID: {$this->preparedStatementID}";
+        }
+
+        if ($this->exportOffset !== null) {
+            $response[] = "Export offset: {$this->exportOffset}";
         }
 
         return implode("\n", $response);
@@ -300,13 +411,16 @@ class StatusRecord {
     }
 
     /**
-     * Returns the ID of the query response that
-     * is returned in the result set.
+     * Returns the ID of the result set that
+     * is returned for a query. It is stored on
+     * the server for this session, and parts
+     * of it can be queried using the "export"
+     * command.
      *
      * @return integer|null
      */
-    public function GetQueryID(): ?int {
-        return $this->queryID;
+    public function GetResultID(): ?int {
+        return $this->resultID;
     }
 
     /**
@@ -319,5 +433,61 @@ class StatusRecord {
     public function GetAutoCommitState(): ?bool
     {
         return $this->autoCommitState;
+    }
+
+    /**
+     * The number of rows (tuples) in the current
+     * response only.
+     *
+     * @return integer|null
+     */
+    public function GetRowCount(): ?int
+    {
+        return $this->rowCount;
+    }
+
+    /**
+     * Column count. If the response contains tabular data,
+     * then this tells the number of columns.
+     *
+     * @return integer|null
+     */
+    public function GetColumnCount(): ?int
+    {
+        return $this->columnCount;
+    }
+
+    /**
+     * Query ID. A global ID which is also used in
+     * functions such as sys.querylog_catalog().
+     *
+     * @return integer|null
+     */
+    public function GetQueryID(): ?int
+    {
+        return $this->queryID;
+    }
+
+    /**
+     * The last automatically generated ID by
+     * an insert statement. (Usually auto_increment)
+     * NULL if none.
+     *
+     * @return integer|null
+     */
+    public function GetLastInsertID(): ?int
+    {
+        return $this->lastInsertID;
+    }
+
+    /**
+     * The index (offset) of the first row in
+     * a block response. (For an "export" command.)
+     *
+     * @return integer|null
+     */
+    public function GetExportOffset(): ?int
+    {
+        return $this->exportOffset;
     }
 }
