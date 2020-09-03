@@ -6,7 +6,7 @@ This is an example project for MonetDB-PHP.
 Steps:
 
 - Follow the Dockerfile instructions in the main README.md file of the project.
-- Log into the Docker container
+- Log into the Docker container with `docker/login.sh`.
 - See appendix 1 on how to prepare the database.
 - Enter the `/var/MonetDB-PHP/Examples/DataModification` directory
 - Execute `composer install`
@@ -19,13 +19,10 @@ Steps:
 
 As an alternative you can execute the `DataModification` example first. But to create the proper schema, you only need to copy paste some commands.
 
-This is repeaing the Dockerfile instructions from the main [README.md](../../README.md) about creating a database and connecting to it on the command line:
+Login into the docker container and connect to the database:
 
 ```bash
-docker exec --user $(whoami) -it monetdb-php /bin/bash
-monetdb create myDatabase
-monetdb release myDatabase
-monetdb start myDatabase
+docker/login.sh
 mclient -d myDatabase
 ```
 
