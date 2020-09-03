@@ -183,7 +183,11 @@ After the client has sent the hashed password to the server, it can receive 4 ki
 
         !InvalidCredentialsException:checkCredentials:invalid credentials for user 'monetdb'
 
-    Detection: the response starts with the `"!InvalidCredentialsException:"` string.
+    Or:
+
+        !monetdbd: no such database 'myDatabase', please create it first
+
+    Detection: the response starts with an exclamation mark `!`.
     When MonetDB returns an error message, then it also discards all session data,
     including active queries, prepared statements, time zone and other settings.
 

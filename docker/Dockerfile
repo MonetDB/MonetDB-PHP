@@ -21,11 +21,25 @@ WORKDIR /tmp
 ENV DEBIAN_FRONTEND noninteractive
 
 #######################################################################
+# Create host user
+#######################################################################
+ARG ENV_USER_ID
+ARG ENV_USER_NAME
+
+RUN printf "\
+user=monetdb\n\
+password=monetdb\n\
+language=sql\n\
+save_history=true\n\
+" > /etc/skel/.monetdb \
+    && useradd -m -s /bin/bash -u $ENV_USER_ID $ENV_USER_NAME
+
+#######################################################################
 # Basic installs
 #######################################################################
 RUN apt-get -y update\
-    && apt-get -y install dbus apt-utils locales wget curl tzdata \
-        ca-certificates openssl net-tools gnupg cron dialog
+    && apt-get -y install apt-utils locales wget curl tzdata \
+        ca-certificates openssl net-tools gnupg cron dialog supervisor
 
 #######################################################################
 # Time Zone
@@ -52,20 +66,17 @@ ENV LC_ALL en_US.UTF-8
 RUN printf "\
 deb https://dev.monetdb.org/downloads/deb/ bionic monetdb\n\
 deb-src https://dev.monetdb.org/downloads/deb/ bionic monetdb\n\
-" > /etc/apt/sources.list.d/monetdb.list\
+" > /etc/apt/sources.list.d/monetdb.list \
 \
-    && curl 'https://www.monetdb.org/downloads/MonetDB-GPG-KEY' | apt-key add -\
-    && apt-get -y update\
-    && apt-get -y install monetdb5-sql monetdb-client\
-    && chown -R monetdb:monetdb /var/monetdb5/dbfarm\
-    && chown -R monetdb:monetdb /var/log/monetdb\
-\
-    && printf "\
-user=monetdb\n\
-password=monetdb\n\
-language=sql\n\
-save_history=true\n\
-" > /etc/skel/.monetdb
+    && curl 'https://www.monetdb.org/downloads/MonetDB-GPG-KEY' | apt-key add - \
+    && apt-get -y update \
+    && apt-get -y install monetdb5-sql monetdb-client \
+    && chown -R ${ENV_USER_NAME}:${ENV_USER_NAME} /var/monetdb5/dbfarm \
+    && chown -R ${ENV_USER_NAME}:${ENV_USER_NAME} /var/log/monetdb \
+    && chown -R ${ENV_USER_NAME}:${ENV_USER_NAME} /run/monetdb \
+    && usermod -a -G monetdb $ENV_USER_NAME \
+    && su ${ENV_USER_NAME} -c "monetdbd start /var/monetdb5/dbfarm && monetdb create myDatabase" \
+    && su ${ENV_USER_NAME} -c "monetdb release myDatabase && monetdb start myDatabase"
 
 #######################################################################
 # Apache + PHP
@@ -89,20 +100,48 @@ Alias /MonetDB-PHP /var/MonetDB-PHP/Examples/WebQuery/www/\n\
 " > /etc/apache2/conf-available/monet-browser.conf\
 \
     && ln -s /etc/apache2/conf-available/monet-browser.conf \
-        /etc/apache2/conf-enabled/monet-browser.conf
+        /etc/apache2/conf-enabled/monet-browser.conf \
+    && usermod -a -G www-data $ENV_USER_NAME
 
-#######################################################################
-# Creating the startup script
-#######################################################################
-RUN printf "#!/usr/bin/env bash\n\n\
-service dbus start\n\
-su monetdb -c '/usr/bin/monetdbd start /var/monetdb5/dbfarm' -s /bin/bash &\n\
-service apache2 start\n\
-service cron start\n\n\
-while true; do sleep infinity; done\n\
-" > /var/startup.sh\
+#################################################################
+# Supervisor
+#################################################################
+RUN printf "\
+[program:apache2]\n\
+command=/bin/bash -c 'source /etc/apache2/envvars && /usr/sbin/apache2 -D FOREGROUND'\n\
+user=root\n\
+numprocs=1\n\
+autostart=true\n\
+autorestart=true\n\
+" > /etc/supervisor/conf.d/apache2.conf \
 \
-    && chmod 755 /var/startup.sh
+    && printf "#!/usr/bin/env bash\n\
+\n\
+trap stop_function SIGINT SIGTERM\n\
+\n\
+function stop_function() {\n\
+    monetdbd stop /var/monetdb5/dbfarm\n\
+    exit\n\
+}\n\
+\n\
+monetdbd start /var/monetdb5/dbfarm\n\
+\n\
+while [ -f /run/monetdb/merovingian.pid ] && kill -0 $(cat /run/monetdb/merovingian.pid) ; do\n\
+    sleep 0.2\n\
+done\n\
+" > /var/monetdb.sh \
+\
+    && chown ${ENV_USER_NAME}:${ENV_USER_NAME} /var/monetdb.sh \
+    && chmod 754 /var/monetdb.sh \
+\
+    && printf "\
+[program:monetdbd]\n\
+command=/var/monetdb.sh\n\
+user="${ENV_USER_NAME}"\n\
+numprocs=1\n\
+autostart=true\n\
+autorestart=true\n\
+" > /etc/supervisor/conf.d/monetdbd.conf
 
 #######################################################################
 # Finalizing setup
@@ -112,4 +151,4 @@ VOLUME ["/var/MonetDB-PHP"]
 WORKDIR /var/MonetDB-PHP
 ENV DEBIAN_FRONTEND dialog
 
-CMD ["/var/startup.sh"]
+ENTRYPOINT ["/usr/bin/supervisord", "-n"]

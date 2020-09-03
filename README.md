@@ -397,27 +397,17 @@ $result3 = $connection3->Query("...");
 
 - Build the Docker image:
 
-        docker build --tag monetdb-php ./
+        docker/build.sh
 
-- Create the Docker container and the host user inside it:
+- Create the Docker container with Apache listening on port 9292:
 
-        docker run -d -h monetdb-php --restart unless-stopped -p 9292:80\
-            -v ${PWD}:/var/MonetDB-PHP --name monetdb-php monetdb-php
-        
-        docker exec --user root -it monetdb-php sh -c \
-            "useradd -m -s /bin/bash -u $(id -u) $(whoami)\
-            && usermod -a -G monetdb $(whoami)"
+        docker/create.sh
 
-- Login into the container as the host user, create a database and log into it:
+- Login into the container as the host user or as root:
 
-        docker exec --user $(whoami) -it monetdb-php /bin/bash
-        monetdb create myDatabase
-        monetdb release myDatabase
-        monetdb start myDatabase
-        mclient -d myDatabase
+        docker/login.sh
+        docker/root_login.sh
 
 - When you don't need the MonetDB-PHP container anymore, you can get rid of it easily: (this also removes the unused images)
 
-        docker stop monetdb-php\
-        && docker image rm monetdb-php --force\
-        && docker system prune --force
+        docker/cleanup.sh
