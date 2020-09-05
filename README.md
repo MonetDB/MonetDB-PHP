@@ -36,6 +36,7 @@ then please read the [guide about the client-server protocol](protocol_doc/READM
   - [StatusRecord Class](#statusrecord-class)
   - [ColumnInfo Class](#columninfo-class)
 - [Development setup through the Docker image](#development-setup-through-the-docker-image)
+- [IDE setup](#ide-setup)
 
 # Installation with Composer
 
@@ -411,3 +412,14 @@ $result3 = $connection3->Query("...");
 - When you don't need the MonetDB-PHP container anymore, you can get rid of it easily: (this also removes the unused images)
 
         docker/cleanup.sh
+
+# IDE setup
+
+- IDE: Visual Studio Code
+- Plugins:
+  - [PHP Intelephense (Ben Mewburn)](https://marketplace.visualstudio.com/items?itemName=bmewburn.vscode-intelephense-client)
+  - [PHP DocBlocker (Neil Brayfield)](https://marketplace.visualstudio.com/items?itemName=neilbrayfield.php-docblocker)
+  - [Remote-SSH (Microsoft)](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh)
+  - [Markdown All in One (Yu Zhang)](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one)
+  - [C/C++ IntelliSense, debugging, and code browsing. (Microsoft)](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
+  - [Doxygen Documentation Generator (Christoph Schlosser)](https://marketplace.visualstudio.com/items?itemName=cschlosser.doxdocgen)
