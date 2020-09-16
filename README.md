@@ -421,5 +421,6 @@ $result3 = $connection3->Query("...");
   - [PHP DocBlocker (Neil Brayfield)](https://marketplace.visualstudio.com/items?itemName=neilbrayfield.php-docblocker)
   - [Remote-SSH (Microsoft)](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh)
   - [Markdown All in One (Yu Zhang)](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one)
+- Plugins for the [Monet-Explorer](protocol_doc/monet-explorer/) project:
   - [C/C++ IntelliSense, debugging, and code browsing. (Microsoft)](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
   - [Doxygen Documentation Generator (Christoph Schlosser)](https://marketplace.visualstudio.com/items?itemName=cschlosser.doxdocgen)
