@@ -18,6 +18,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -450,8 +451,8 @@ namespace CommandLine {
              * @return bool
              */
             bool IsHelpRequested() {
-                if (this->accu.operands.size() < 1 && this->accu.optionNames.size() < 1
-                    && this->accu.argsByName.size() < 1) {
+                if ((int)this->accu.operands.size() < 1 && (int)this->accu.optionNames.size() < 1
+                    && (int)this->accu.argsByName.size() < 1) {
                     
                     return true;
                 }
@@ -472,6 +473,7 @@ namespace CommandLine {
             int argc;
             char **argv;
             Helper::ArgumentAccumulator accu;
+            int screenWidth;
 
             /**
              * @brief Trim C string. Designed for argv. Pointers and strings in argv
@@ -487,7 +489,7 @@ namespace CommandLine {
                     return 0;
                 }
 
-                if (!isprint(**str)) {
+                if (!isprint(**str) || **str == ' ') {
                     (*str)++;
                     goto left_trim;
                 }
@@ -503,7 +505,7 @@ namespace CommandLine {
 
                 end--;  // at first: end > *str
 
-                if (!isprint(*end)) {
+                if (!isprint(*end) || **str == ' ') {
                     *end = '\0';
 
                     if (end > *str) {
@@ -527,18 +529,19 @@ namespace CommandLine {
              */
             void ThrowError(std::string message, std::string line, int position) {
                 std::stringstream buff;
-                const int windowSize = 80;
+                int windowSize = this->screenWidth;
                 const float ratio = 0.666;
-                const int maxHead = (int)(ratio * (float)windowSize);
-                const int maxTail = windowSize - maxHead;
+                int maxHead = (int)(ratio * (float)windowSize);
+                int maxTail = windowSize - maxHead;
                 int start, head, length;
 
                 /*
                     The 4 cases are explained here:
                         - protocol_doc/monet-explorer/docs/error_display_cases.png
+                            (length = head + tail)
                 */
 
-                if (position < maxHead || line.size() < windowSize) {
+                if (position < maxHead || (int)line.size() < windowSize) {
                     // Cases 2 and 4
                     start = 0;
                     head = position;
@@ -546,7 +549,7 @@ namespace CommandLine {
                 }
                 else if ((int)line.size() - position < maxTail) {
                     // Case 3
-                    start = line.size() - windowSize;
+                    start = (int)line.size() - windowSize;
                     head = position - start;
                     length = windowSize;
                 }
@@ -557,10 +560,12 @@ namespace CommandLine {
                     length = windowSize;
                 }
 
-                buff << message << "\n\n";
-                buff << line.substr(start, length) << "\n";
-                buff << std::string(head + 1, ' ') << "^\n";
-                buff << std::string(head + 1, ' ') << "|\n";
+                buff << "\033[33m" << std::string(windowSize, '-') << "\033[0m" << '\n';
+                buff << "\033[31m" << message << "\033[0m" << "\n\n";
+                buff << line.substr(start, length) << '\n';
+                buff << std::string(head + 1, ' ') << "\033[1m\033[37m" << "^\n";
+                buff << "\033[33m" << std::string(head + 1, '-') << "\033[1m\033[37m" << '|'
+                    << "\033[33m" << std::string(windowSize - head - 2, '-') << "\033[0m";
 
                 throw std::runtime_error(buff.str());
             }
@@ -582,6 +587,137 @@ namespace CommandLine {
                 this->accu.operandValues.push_back(std::string(value));
             }
 
+            /**
+             * @brief Find the next chunk of text (limited by breaker characters),
+             * to be outputted on a line. Convert soft hyphens to hyphens when
+             * necessary.
+             * 
+             * @param text The full text for a column. It will not be modified.
+             * @param cursor The current byte position in the text. At the beginning it
+             * must point to the first byte of multy-byte characters (if any).
+             * This parameter will be modified and set to the next character to be
+             * processed. It is set to the length of the string if no more characters
+             * are available.
+             * @param limit The maximal number of UTF-8 characters in a line.
+             * @param softHypen Optional soft hyphen character to make the
+             * text more fluid. Set it to 0 to disable this feature.
+             * Can only be a single-byte character.
+             * @param out The resulting characters will be appended to this
+             * string stream.
+             */
+            inline void FormatLine(std::string &text, int &cursor, int limit, char softHypen, std::stringstream &out) {
+                int length = text.length();
+                int charCount = 0;
+                int mb_remain = 0;  // Bytes remaining from a multi-byte character
+                std::stringstream lastWord;
+                int lastWordCharCount;
+                char c; // Current byte
+                bool foundSoftHyphen = false;
+                int lastWordPosition = 0; // starting byte position of the last word (inc. breaker)
+
+                for (; cursor < length; cursor++) {
+                    c = text[cursor];
+                    
+                    /*
+                        When inside a multi-byte character:
+                            - ignore breakers
+                            - don't increment char count
+                    */
+                    if (mb_remain > 0) {
+                        // Check for UTF-8 errors
+                        if ((c & 0xC0) != 0x80) {
+                            // Non-expected byte header
+                            //  => Treat it as a new character
+                            mb_remain = 0;
+                            goto char_limit_check;
+                        }
+
+                        mb_remain--;
+                        lastWord << c;
+                        continue;
+                    }
+
+                    /*
+                        Check if we reached the character limit
+                        for the line if we include the current
+                        character too (+1).
+                    */
+                    char_limit_check:
+
+                    if (charCount + lastWordCharCount + 1 > limit) {
+                        if (c != softHypen && (!isprint(c) || c == ' ')) {
+                            /*
+                                Keep the word and position after the (non-hyphen) breaker.
+                            */
+                            out << lastWord.str();
+                            cursor++;
+                            return;
+                        }
+
+                        /*
+                            Drop current word
+                        */
+                        if (foundSoftHyphen) {
+                            out << '-';
+                        }
+                        
+                        cursor = lastWordPosition;
+                        return;
+                    }
+
+                    /*
+                        Check for multi-byte
+                        https://stackoverflow.com/a/44568131/6630230
+                    */
+                    if ((c & 0xE0) == 0xC0) {
+                        mb_remain = 1;
+                        lastWord << c;
+                        lastWordCharCount++;
+                        continue;
+                    } else if ((c & 0xF0) == 0xE0) {
+                        mb_remain = 2;
+                        lastWord << c;
+                        lastWordCharCount++;
+                        continue;
+                    } else if ((c & 0xF8) == 0xF0) {
+                        mb_remain = 3;
+                        lastWord << c;
+                        lastWordCharCount++;
+                        continue;
+                    }
+
+                    /*
+                        Check for word-breakers (non printable, space, soft hyphen)
+                    */
+                    if (softHypen != 0 && c == softHypen) {
+                        foundSoftHyphen = true;
+
+                        lastWordPosition = cursor;
+                        charCount += lastWordCharCount;
+                        lastWordCharCount = 0;
+                        out << lastWord.str();
+                        lastWord.str("");
+                        lastWord.clear();   // Clear the error state too
+
+                        continue;
+                    } else if (!isprint(c) || c == ' ') {
+                        foundSoftHyphen = false;
+
+                        lastWordPosition = cursor;
+                        charCount += lastWordCharCount;
+                        lastWordCharCount = 0;
+                        out << lastWord.str();
+                        lastWord.str("");
+                        lastWord.clear();   // Clear the error state too
+
+                        continue;
+                    }
+                }
+
+                // All characters processed from text
+                // cursor = length
+            }
+
         public:
             /**
              * @brief Specify a new argument.
@@ -594,7 +730,9 @@ namespace CommandLine {
              * @param argc First parameter of the main function.
              * @param argv Second parameter of the main function.
              */
-            Parser(int argc, char *argv[]) : argc(argc), argv(argv), accu(), Argument(accu) { }
+            Parser(int argc, char *argv[]) : argc(argc), argv(argv), accu(), Argument(accu) {
+                this->screenWidth = 80;
+            }
 
             /**
              * @brief Specify a new option.
@@ -665,47 +803,12 @@ namespace CommandLine {
                             continue;
                         }
                         else if (expectArgValue) {
-                            if (arg[0] == '-' && length > 1) {
-                                throw std::runtime_error("Expected an argument value, but the data starts with a dash "
-                                    "character. If you wish to provide a string that starts with dash, "
-                                    "then please put the string into quotes (single or double quotes).");
-                            }
-                            else if (arg[0] == '"') {
-                                if (arg[length - 1] == '"' && length > 1) {
-                                    /*
-                                        Argument value inside quotes
-                                    */
-                                    arg[length - 1] = '\0';
-                                    this->accu.SetValue(lastArg, std::string(arg + 1));
-                                    expectArgValue = false;
-                                    continue;
-                                }
-                                else {
-                                    throw std::runtime_error("Missing closing quote at the end of the argument value.");
-                                }
-                            }
-                            else if (arg[0] == '\'') {
-                                if (arg[length - 1] == '\'' && length > 1) {
-                                    /*
-                                        Argument value inside quotes
-                                    */
-                                    arg[length - 1] = '\0';
-                                    this->accu.SetValue(lastArg, std::string(arg + 1));
-                                    expectArgValue = false;
-                                    continue;
-                                }
-                                else {
-                                    throw std::runtime_error("Missing closing quote at the end of the argument value.");
-                                }
-                            }
-                            else {
-                                /*
-                                    Argument value
-                                */
-                                this->accu.SetValue(lastArg, std::string(arg));
-                                expectArgValue = false;
-                                continue;
-                            }
+                            /*
+                                Argument value
+                            */
+                            this->accu.SetValue(lastArg, std::string(arg));
+                            expectArgValue = false;
+                            continue;
                         }
                         else if (arg[0] == '-') {
                             if (length > 1) {
@@ -753,6 +856,8 @@ namespace CommandLine {
                                     for(int i = 1; i < length; i++) {
                                         auto item = this->accu.argsByLetter.find(arg[i]);
                                         if (item == this->accu.argsByLetter.end()) {
+                                            position += i;
+
                                             throw std::runtime_error("Invalid argument letter: '"
                                                 + std::string(1, arg[i]) + "'.");
                                         }
@@ -769,7 +874,7 @@ namespace CommandLine {
                                             if (foundArgument) {
                                                 throw std::runtime_error("When multiple options are provided after a single dash, "
                                                     "only one of them can be an argument. (Because each argument would require "
-                                                    "a separate parameter value.) Please separate the superfluous arguments.");
+                                                    "a separate parameter value.) Please separate the extra arguments.");
                                             }
 
                                             lastArg = item->second;
@@ -819,6 +924,111 @@ namespace CommandLine {
                 std::stringstream buff;
 
                 // TODO
+
+                return buff.str();
+            }
+
+            std::string ColumnFormat(int columns, std::vector<double> widthWeights, std::vector<std::string> texts,
+                std::vector<int> leftPaddings, std::vector<int> rightPaddings, char softHyphen) {
+
+                /*
+                    Validate parameters.
+                */
+                if (columns < 1) {
+                    throw std::runtime_error("Parser::ColumnFormat(): Too small 'columns' parameter value. At least 1 required.");
+                }
+
+                if ((int)widthWeights.size() != columns) {
+                    throw std::runtime_error("Parser::ColumnFormat(): 'widthWeights' parameter: invalid number of elements. "
+                        + std::to_string(columns) + " expected.");
+                }
+
+                if ((int)texts.size() != columns) {
+                    throw std::runtime_error("Parser::ColumnFormat(): 'texts' parameter: invalid number of elements. "
+                        + std::to_string(columns) + " expected.");
+                }
+
+                if ((int)leftPaddings.size() != columns) {
+                    throw std::runtime_error("Parser::ColumnFormat(): 'leftPaddings' parameter: invalid number of elements. "
+                        + std::to_string(columns) + " expected.");
+                }
+
+                if ((int)rightPaddings.size() != columns) {
+                    throw std::runtime_error("Parser::ColumnFormat(): 'rightPaddings' parameter: invalid number of elements. "
+                        + std::to_string(columns) + " expected.");
+                }
+
+                for (int column = 0; column < columns; column++) {
+                    
+                }
+
+                /*
+                    Determine working windows for each column.
+                */
+                int workWidth = this->screenWidth;
+                double weightSum = 0.0;
+
+                for (int column = 0; column < columns; column++) {
+                    workWidth -= leftPaddings[column];
+                    workWidth -= rightPaddings[column];
+                    weightSum += widthWeights[column];
+                }
+
+                if (workWidth < columns) {
+                    throw std::runtime_error("Parser::ColumnFormat(): Can't render text. Window width too small.");
+                }
+
+                int pos = 0, value;
+                std::vector<int> start(columns);
+                std::vector<int> width(columns);
+
+                for (int column = 0; column < columns; column++) {
+                    value = (int)round((double)workWidth * (widthWeights[column] / weightSum));
+                    if (value < 1) {
+                        throw std::runtime_error("Parser::ColumnFormat(): Can't render text. Window width too small.");
+                    }
+
+                    pos += leftPaddings[column];
+                    start[column] = pos;
+                    pos += value + rightPaddings[column];
+                    width[column] = value;
+                }
+
+    	        /*
+                    Output formatted text.
+                */
+                std::vector<int> cursors(columns, 0);
+                std::stringstream buff;
+                //int ultima;
+                //char c;
+
+                while (true) {
+                    for (int column = 0; column < columns; column++) {
+                        this->FormatLine(texts[column], cursors[column], width[column], softHyphen, buff);
+                        if (cursors[column] >= (int)texts[column].size()) {
+                            // Reached end of text in this column
+
+                        }
+
+                        // Fill the remaining width with spaces.
+
+                        /*
+                        ultima = cursors[column] + width[column] - 1;
+
+                        if ((int)texts[column].size() - 1 <= ultima) {
+                            // Text ended in this column
+
+                        } else {
+                            
+                        }
+
+                        while (ultima > cursors[column]) {
+                            c = texts[column][ultima];
+
+
+                        }*/
+                    }
+                }
 
                 return buff.str();
             }
