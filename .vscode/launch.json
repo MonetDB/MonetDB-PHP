@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/protocol_doc/monet-explorer/monet-explorer-dbg",
+            "args": ["--host", "127.0.0.1", "-u", "user", "--auth-algo", "SHA1", "-xt",
+                "--port", "50000", "-P", "secret", "monetdb"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/protocol_doc/monet-explorer",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}

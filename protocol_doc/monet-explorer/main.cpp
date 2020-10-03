@@ -39,11 +39,12 @@ int main(int argc, char *argv[]) {
             "for the 'salted hashing'. The MonetDB server has to support it. This is "
             "typically a weaker hash algorithm, which is used together with a "
             "stronger 'password hash' that is currently SHA512.");
+        cmd.Option("help", '?', "Display the usage instructions.");
         cmd.RestrictOperands();
 
         auto args = cmd.Parse();
 
-        if (args.IsHelpRequested()) {
+        if (!args.IsHelpRequested()) {
             std::cout << "\n\n Some text \n\n";
             std::cout << cmd.GenerateDoc();
             return 0;

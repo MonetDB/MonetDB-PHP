@@ -351,7 +351,7 @@ namespace CommandLine {
                 ArgumentSpecifier(ArgumentAccumulator &accu) : accu(accu) { }
 
                 /**
-                 * @brief Optional argument with integer value and
+                 * @brief Specify an optional argument with integer value and
                  * a default.
                  * 
                  * @param name 
@@ -364,7 +364,7 @@ namespace CommandLine {
                 }
 
                 /**
-                 * @brief Mandatory argument with integer value.
+                 * @brief Specify a mandatory argument with integer value.
                  * 
                  * @param name 
                  * @param letter 
@@ -375,7 +375,7 @@ namespace CommandLine {
                 }
 
                 /**
-                 * @brief Optional argument with string type and
+                 * @brief Specify an optional argument with string type and
                  * default value.
                  * 
                  * @param name 
@@ -388,7 +388,7 @@ namespace CommandLine {
                 }
 
                 /**
-                 * @brief Mandatory argument with string type.
+                 * @brief Specify a mandatory argument with string type.
                  * 
                  * @param name 
                  * @param letter 
@@ -399,7 +399,7 @@ namespace CommandLine {
                 }
 
                 /**
-                 * @brief Optional argument with double type and
+                 * @brief Specify an optional argument with double type and
                  * default value.
                  * 
                  * @param name 
@@ -412,7 +412,7 @@ namespace CommandLine {
                 }
 
                 /**
-                 * @brief Mandatory argument with double type.
+                 * @brief Specify a mandatory argument with double type.
                  * 
                  * @param name 
                  * @param letter 
@@ -590,7 +590,7 @@ namespace CommandLine {
             /**
              * @brief Find the next chunk of text (limited by breaker characters),
              * to be outputted on a line. Convert soft hyphens to hyphens when
-             * necessary.
+             * necessary. Fill the remainder with spaces
              * 
              * @param text The full text for a column. It will not be modified.
              * @param cursor The current byte position in the text. At the beginning it
@@ -602,22 +602,43 @@ namespace CommandLine {
              * @param softHypen Optional soft hyphen character to make the
              * text more fluid. Set it to 0 to disable this feature.
              * Can only be a single-byte character.
+             * @param textAttribute For maintaining the text attribute states
+             * per columns between calls. Examples: bold, underline.
              * @param out The resulting characters will be appended to this
              * string stream.
              */
-            inline void FormatLine(std::string &text, int &cursor, int limit, char softHypen, std::stringstream &out) {
+            inline void FormatLine(std::string &text, int &cursor, int limit, char softHypen,
+                    int &textAttribute, std::stringstream &out) {
+                
                 int length = text.length();
                 int charCount = 0;
                 int mb_remain = 0;  // Bytes remaining from a multi-byte character
                 std::stringstream lastWord;
-                int lastWordCharCount;
+                int lastWordCharCount = 0;
                 char c; // Current byte
                 bool foundSoftHyphen = false;
                 int lastWordPosition = 0; // starting byte position of the last word (inc. breaker)
+                
+                /*
+                    Restore the text attribute
+                */
+                out << "\033[" << textAttribute << 'm';
 
+                /*
+                    Left-trim
+                */
+                while(cursor < length && (!isprint(text[cursor]) || text[cursor] == ' ')
+                        && text[cursor] != '\033') {
+                    
+                    cursor++;
+                }
+
+                /*
+                    Parse line
+                */
                 for (; cursor < length; cursor++) {
                     c = text[cursor];
-                    
+
                     /*
                         When inside a multi-byte character:
                             - ignore breakers
@@ -645,12 +666,27 @@ namespace CommandLine {
                     char_limit_check:
 
                     if (charCount + lastWordCharCount + 1 > limit) {
-                        if (c != softHypen && (!isprint(c) || c == ' ')) {
+                        /*
+                            The last word just fits on the line.
+                            \035 = non-breaking space
+                        */
+                        if (c != softHypen && (!isprint(c) || c == ' ') && c != '\035') {
                             /*
-                                Keep the word and position after the (non-hyphen) breaker.
+                                Keep the word.
                             */
                             out << lastWord.str();
-                            cursor++;
+                            charCount += lastWordCharCount;
+                            return;
+                        }
+
+                        /*
+                            If the line started with a long word that
+                            didn't fit into the allowed width, then
+                            force "break all" behavior.
+                        */
+                        if (lastWordPosition == 0) {
+                            out << lastWord.str();
+                            charCount += lastWordCharCount;
                             return;
                         }
 
@@ -660,9 +696,9 @@ namespace CommandLine {
                         if (foundSoftHyphen) {
                             out << '-';
                         }
-                        
+
                         cursor = lastWordPosition;
-                        return;
+                        goto fill_remainder_with_spaces;
                     }
 
                     /*
@@ -687,6 +723,26 @@ namespace CommandLine {
                     }
 
                     /*
+                        Check for VT100 escape sequences.
+                        Allow only text attributes: ESC[0m, ESC[1m, etc.
+                        Output them, but don't include them
+                        in the char count.
+                    */
+                    if (c == '\033') {
+                        if (cursor + 3 < length) {
+                            if (text[cursor + 1] == '[' && text[cursor + 3] == 'm'
+                                && text[cursor + 2] >= 48 && text[cursor + 2] <= 56
+                                && text[cursor + 2] != 51 && text[cursor + 2] != 54) {
+                                
+                                textAttribute = text[cursor + 2] - 48;
+                                lastWord << "\033[" << textAttribute << 'm';
+                                cursor += 3;
+                                continue;
+                            }
+                        }
+                    }
+
+                    /*
                         Check for word-breakers (non printable, space, soft hyphen)
                     */
                     if (softHypen != 0 && c == softHypen) {
@@ -700,22 +756,40 @@ namespace CommandLine {
                         lastWord.clear();   // Clear the error state too
 
                         continue;
-                    } else if (!isprint(c) || c == ' ') {
+                    } else if ((!isprint(c) || c == ' ') && c != '\035') {
                         foundSoftHyphen = false;
 
                         lastWordPosition = cursor;
                         charCount += lastWordCharCount;
-                        lastWordCharCount = 0;
+                        lastWordCharCount = 1;
                         out << lastWord.str();
                         lastWord.str("");
                         lastWord.clear();   // Clear the error state too
-
+                        lastWord << ' '; // Keep the space
+                        
                         continue;
+                    } else {
+                        if (c == '\035') {
+                            lastWord << ' ';
+                        } else {
+                            lastWord << c;
+                        }
+                        
+                        lastWordCharCount++;
                     }
                 }
 
-                // All characters processed from text
-                // cursor = length
+                out << lastWord.str();
+                charCount += lastWordCharCount;
+
+                /*
+                    Fill remainder with spaces
+                */
+                fill_remainder_with_spaces:
+
+                if (limit > charCount) {
+                    out << std::string(limit - charCount, ' ');
+                }
             }
 
         public:
@@ -923,13 +997,41 @@ namespace CommandLine {
             std::string GenerateDoc() {
                 std::stringstream buff;
 
-                // TODO
+                buff << "Doc:\n\n";
+
+                buff << this->ColumnFormat(
+                    2,
+                    std::vector<double> { 40, 60 },
+                    std::vector<std::string> {
+                        "--unix-domain-socket, -x\035[value] ",
+                        "Use a unix domain socket for connecting "
+                        "to the \033[1mMonetDB server\033[0m, instead of connecting through TCP/IP. "
+                        "If provided, then the host and port arguments are ignored."
+                    },
+                    std::vector<int> { 1, 0 },
+                    std::vector<int> { 1, 0 },
+                    '|', false
+                );
 
                 return buff.str();
             }
 
+            /**
+             * @brief 
+             * 
+             * @param columns 
+             * @param widthWeights 
+             * @param texts 
+             * @param leftPaddings 
+             * @param rightPaddings 
+             * @param softHyphen 
+             * @param breakAll If true, then the soft hyhen functionality is disabled and
+             * the text can be broken after any character. This is mostly for languages
+             * like Japanese or Chinese.
+             * @return std::string 
+             */
             std::string ColumnFormat(int columns, std::vector<double> widthWeights, std::vector<std::string> texts,
-                std::vector<int> leftPaddings, std::vector<int> rightPaddings, char softHyphen) {
+                std::vector<int> leftPaddings, std::vector<int> rightPaddings, char softHyphen, bool breakAll) {
 
                 /*
                     Validate parameters.
@@ -959,7 +1061,20 @@ namespace CommandLine {
                 }
 
                 for (int column = 0; column < columns; column++) {
-                    
+                    if (widthWeights[column] <= 0) {
+                        throw std::runtime_error("Parser::ColumnFormat(): All width weight values must be larger than zero. "
+                            "The weight value in column " + std::to_string(column) + " is invalid.");
+                    }
+
+                    if (leftPaddings[column] < 0) {
+                        throw std::runtime_error("Parser::ColumnFormat(): The 'left padding' value for column "
+                            + std::to_string(column) + " is negative.");
+                    }
+
+                    if (rightPaddings[column] < 0) {
+                        throw std::runtime_error("Parser::ColumnFormat(): The 'right padding' value for column "
+                            + std::to_string(column) + " is negative.");
+                    }
                 }
 
                 /*
@@ -998,35 +1113,34 @@ namespace CommandLine {
                     Output formatted text.
                 */
                 std::vector<int> cursors(columns, 0);
+                std::vector<int> textAttributes(columns, 0);
                 std::stringstream buff;
-                //int ultima;
-                //char c;
 
                 while (true) {
+                    int terminated = 0;
+
                     for (int column = 0; column < columns; column++) {
-                        this->FormatLine(texts[column], cursors[column], width[column], softHyphen, buff);
+                        if (leftPaddings[column] > 0) {
+                            buff << std::string(leftPaddings[column], ' ');
+                        }
+                        
                         if (cursors[column] >= (int)texts[column].size()) {
-                            // Reached end of text in this column
-
-                        }
-
-                        // Fill the remaining width with spaces.
-
-                        /*
-                        ultima = cursors[column] + width[column] - 1;
-
-                        if ((int)texts[column].size() - 1 <= ultima) {
-                            // Text ended in this column
-
+                            buff << std::string(width[column], ' ');
+                            terminated++;
                         } else {
-                            
+                            this->FormatLine(texts[column], cursors[column], width[column], softHyphen,
+                                textAttributes[column], buff);
                         }
 
-                        while (ultima > cursors[column]) {
-                            c = texts[column][ultima];
+                        if (rightPaddings[column] > 0) {
+                            buff << std::string(rightPaddings[column], ' ');
+                        }
+                    }
 
+                    buff << '\n';
 
-                        }*/
+                    if (terminated >= columns) {
+                        break;
                     }
                 }
 
