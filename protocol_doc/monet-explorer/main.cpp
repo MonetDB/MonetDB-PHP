@@ -25,26 +25,26 @@ int main(int argc, char *argv[]) {
         */
         CommandLine::Parser cmd(argc, argv);
 
-        cmd.Argument.String("host", 'h', "127.0.0.1", "The host name or IP address "
-            "of the MonetDB server.");
-        cmd.Argument.Int("port", 'p', 50000, "The port of the MonetDB server.");
-        cmd.Argument.String("user", 'u', "monetdb", "User name.");
-        cmd.Argument.String("password", 'P', "monetdb", "User password.");
-        cmd.Operand("database", "The name of the database to connect to.");
-        cmd.Option("unix-domain-socket", 'x', "Use a unix domain socket for connecting "
-            "to the MonetDB server, instead of connecting through TCP/IP. "
-            "If provided, then the host and port arguments are ignored.");
-        cmd.Option("file-transfer", 't', "Enable the file transfer protocol for the connection.");
-        cmd.Argument.String("auth-algo", 'a', "SHA1", "The hash algorithm to be used "
-            "for the 'salted hashing'. The MonetDB server has to support it. This is "
-            "typically a weaker hash algorithm, which is used together with a "
-            "stronger 'password hash' that is currently SHA512.");
+        cmd.Argument.String("host", 'h', "127.0.0.1", "host_name", "The host name or IP add|ress "
+            "of the \033[1mMonetDB server\033[0m.");
+        cmd.Argument.Int("port", 'p', 50000, "port", "The port of the \033[1mMonetDB server\033[0m.");
+        cmd.Argument.String("user", 'u', "monetdb", "user_name", "User name for the database login.");
+        cmd.Argument.String("password", 'P', "monetdb", "password", "User password for the database login.");
+        cmd.Operand("database", "The name of the data|base to connect to.");
+        cmd.Option("unix-domain-socket", 'x', "Use a unix domain socket for connect|ing "
+            "to the \033[1mMonetDB server\033[0m, instead of connect|ing through TCP/IP. "
+            "If pro|vi|ded, then the host and port ar|gu|ments are ig|no|red.");
+        cmd.Option("file-transfer", 't', "Enable the file trans|fer pro|to|col for the connect|ion.");
+        cmd.Argument.String("auth-algo", 'a', "SHA1", "algo", "The hash al|go|rithm to be used "
+            "for the 'salted hashing'. The \033[1mMonetDB server\033[0m has to support it. This is "
+            "typi|cally a weaker hash al|go|rithm, which is used to|gether with a "
+            "stron|ger 'pass|word hash' that is currently SHA512.");
         cmd.Option("help", '?', "Display the usage instructions.");
         cmd.RestrictOperands();
 
         auto args = cmd.Parse();
 
-        if (!args.IsHelpRequested()) {
+        if (args.IsHelpRequested()) {
             std::cout << "\n\n Some text \n\n";
             std::cout << cmd.GenerateDoc();
             return 0;

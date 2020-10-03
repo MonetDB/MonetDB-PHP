@@ -54,6 +54,7 @@ namespace CommandLine {
         class CommandLineArg {
             private:
                 std::string name;
+                std::string valueName;
                 char letter;
                 ArgumentClass argClass;
                 ArgumentType argType;
@@ -68,7 +69,7 @@ namespace CommandLine {
                  * @brief Create empty ebject
                  */
                 CommandLineArg() 
-                    : name(), letter(0), argClass(ArgumentClass::Argument), argType(ArgumentType::String),
+                    : name(), valueName(), letter(0), argClass(ArgumentClass::Argument), argType(ArgumentType::String),
                     optional(false), stringDefault(), intDefault(0), doubleDefault(0), description()
                 { }
 
@@ -79,7 +80,7 @@ namespace CommandLine {
                  * @param description The description of the operand.
                  */
                 CommandLineArg(std::string name, std::string description) 
-                    : name(name), letter(0), argClass(ArgumentClass::Operand), argType(ArgumentType::String),
+                    : name(name), valueName(), letter(0), argClass(ArgumentClass::Operand), argType(ArgumentType::String),
                     optional(false), stringDefault(), intDefault(0), doubleDefault(0), description(description)
                 { }
 
@@ -91,7 +92,7 @@ namespace CommandLine {
                  * @param description Description of the option.
                  */
                 CommandLineArg(std::string name, char letter, std::string description)
-                    : name(name), letter(letter), argClass(ArgumentClass::Option), argType(ArgumentType::Boolean),
+                    : name(name), valueName(), letter(letter), argClass(ArgumentClass::Option), argType(ArgumentType::Boolean),
                     optional(false), stringDefault(), intDefault(0), doubleDefault(0), description(description)
                 { }
 
@@ -100,11 +101,14 @@ namespace CommandLine {
                  * 
                  * @param name Name of the argument.
                  * @param letter The single-character name of the argument.
-                 * @param argType 
-                 * @param description 
+                 * @param argType String / Int / Double / Boolean
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                CommandLineArg(std::string name, char letter, ArgumentType argType, std::string description)
-                    : name(name), letter(letter), argClass(ArgumentClass::Argument), argType(argType),
+                CommandLineArg(std::string name, char letter, ArgumentType argType, std::string valueName,
+                        std::string description)
+                    : name(name), valueName(valueName), letter(letter), argClass(ArgumentClass::Argument), argType(argType),
                     optional(false), stringDefault(), intDefault(0), doubleDefault(0), description(description)
                 { }
 
@@ -113,12 +117,15 @@ namespace CommandLine {
                  * 
                  * @param name Name of the argument.
                  * @param letter The single-character name of the argument.
-                 * @param intDefault 
-                 * @param description 
+                 * @param intDefault Default value for the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                CommandLineArg(std::string name, char letter, int intDefault, std::string description)
-                    : name(name), letter(letter), argClass(ArgumentClass::Argument), argType(ArgumentType::Int),
-                    optional(true), stringDefault(), intDefault(intDefault), doubleDefault(0), description(description)
+                CommandLineArg(std::string name, char letter, int intDefault, std::string valueName, std::string description)
+                    : name(name), valueName(valueName), letter(letter), argClass(ArgumentClass::Argument),
+                    argType(ArgumentType::Int), optional(true), stringDefault(), intDefault(intDefault),
+                    doubleDefault(0), description(description)
                 { }
 
                 /**
@@ -126,12 +133,16 @@ namespace CommandLine {
                  * 
                  * @param name Name of the argument.
                  * @param letter The single-character name of the argument.
-                 * @param stringDefault 
-                 * @param description 
+                 * @param stringDefault Default value for the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                CommandLineArg(std::string name, char letter, std::string stringDefault, std::string description)
-                    : name(name), letter(letter), argClass(ArgumentClass::Argument), argType(ArgumentType::String),
-                    optional(true), stringDefault(stringDefault), intDefault(0), doubleDefault(0), description(description)
+                CommandLineArg(std::string name, char letter, std::string stringDefault, std::string valueName,
+                        std::string description)
+                    : name(name), valueName(valueName), letter(letter), argClass(ArgumentClass::Argument),
+                        argType(ArgumentType::String), optional(true), stringDefault(stringDefault),
+                        intDefault(0), doubleDefault(0), description(description)
                 { }
 
                 /**
@@ -139,12 +150,16 @@ namespace CommandLine {
                  * 
                  * @param name Name of the argument.
                  * @param letter The single-character name of the argument.
-                 * @param doubleDefault 
-                 * @param description 
+                 * @param doubleDefault Default value for the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                CommandLineArg(std::string name, char letter, double doubleDefault, std::string description)
-                    : name(name), letter(letter), argClass(ArgumentClass::Argument), argType(ArgumentType::Double),
-                    optional(true), stringDefault(), intDefault(0), doubleDefault(doubleDefault), description(description)
+                CommandLineArg(std::string name, char letter, double doubleDefault, std::string valueName,
+                        std::string description)
+                    : name(name), valueName(valueName), letter(letter), argClass(ArgumentClass::Argument),
+                        argType(ArgumentType::Double), optional(true), stringDefault(),
+                        intDefault(0), doubleDefault(doubleDefault), description(description)
                 { }
 
                 /**
@@ -152,8 +167,19 @@ namespace CommandLine {
                  * 
                  * @return std::string 
                  */
-                std::string GetName() {
+                std::string GetName() const {
                     return this->name;
+                }
+
+                /**
+                 * @brief Get the value name of the argument. For the auto-generated
+                 * doc only. This is displayed after the options of the argument.
+                 * It's a short name that describes the accepted values.
+                 * 
+                 * @return std::string 
+                 */
+                std::string GetValueName() const {
+                    return this->valueName;
                 }
 
                 /**
@@ -161,7 +187,7 @@ namespace CommandLine {
                  * 
                  * @return char 
                  */
-                char GetLetter() {
+                char GetLetter() const {
                     return this->letter;
                 }
 
@@ -170,7 +196,7 @@ namespace CommandLine {
                  * 
                  * @return ArgumentClass 
                  */
-                ArgumentClass GetArgClass() {
+                ArgumentClass GetArgClass() const {
                     return this->argClass;
                 }
 
@@ -179,7 +205,7 @@ namespace CommandLine {
                  * 
                  * @return ArgumentType
                  */
-                ArgumentType GetArgType() {
+                ArgumentType GetArgType() const {
                     return this->argType;
                 }
 
@@ -188,7 +214,7 @@ namespace CommandLine {
                  * 
                  * @return bool
                  */
-                bool IsOptional() {
+                bool IsOptional() const {
                     return this->optional;
                 }
 
@@ -197,7 +223,7 @@ namespace CommandLine {
                  * 
                  * @return std::string 
                  */
-                std::string GetStringDefault() {
+                std::string GetStringDefault() const {
                     return this->stringDefault;
                 }
 
@@ -206,7 +232,7 @@ namespace CommandLine {
                  * 
                  * @return int
                  */
-                int GetIntDefault() {
+                int GetIntDefault() const {
                     return this->intDefault;
                 }
 
@@ -215,7 +241,7 @@ namespace CommandLine {
                  * 
                  * @return double
                  */
-                int GetDoubleDefault() {
+                int GetDoubleDefault() const {
                     return this->doubleDefault;
                 }
 
@@ -224,7 +250,7 @@ namespace CommandLine {
                  * 
                  * @return std::string 
                  */
-                std::string GetDescription() {
+                std::string GetDescription() const {
                     return this->description;
                 }
         };
@@ -354,72 +380,86 @@ namespace CommandLine {
                  * @brief Specify an optional argument with integer value and
                  * a default.
                  * 
-                 * @param name 
-                 * @param letter 
-                 * @param defaultValue 
-                 * @param description 
+                 * @param name Name of the argument.
+                 * @param letter The single-character name of the argument.
+                 * @param defaultValue Default value for the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                void Int(const char *name, char letter, int defaultValue, const char *description) {
-                    accu.AddArg(CommandLineArg(name, letter, defaultValue, description));
+                void Int(const char *name, char letter, int defaultValue, const char *valueName, const char *description) {
+                    accu.AddArg(CommandLineArg(name, letter, defaultValue, valueName, description));
                 }
 
                 /**
                  * @brief Specify a mandatory argument with integer value.
                  * 
-                 * @param name 
-                 * @param letter 
-                 * @param description 
+                 * @param name Name of the argument.
+                 * @param letter The single-character name of the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                void Int(const char *name, char letter, const char *description) {
-                    accu.AddArg(CommandLineArg(name, letter, ArgumentType::Int, description));
+                void Int(const char *name, char letter, const char *valueName, const char *description) {
+                    accu.AddArg(CommandLineArg(name, letter, ArgumentType::Int, valueName, description));
                 }
 
                 /**
                  * @brief Specify an optional argument with string type and
                  * default value.
                  * 
-                 * @param name 
-                 * @param letter 
-                 * @param defaultValue 
-                 * @param description 
+                 * @param name Name of the argument.
+                 * @param letter The single-character name of the argument.
+                 * @param defaultValue Default value for the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                void String(const char *name, char letter, const char *defaultValue, const char *description) {
-                    accu.AddArg(CommandLineArg(name, letter, defaultValue, description));
+                void String(const char *name, char letter, const char *defaultValue, const char *valueName,
+                        const char *description) {
+                    accu.AddArg(CommandLineArg(name, letter, defaultValue, valueName, description));
                 }
 
                 /**
                  * @brief Specify a mandatory argument with string type.
                  * 
-                 * @param name 
-                 * @param letter 
-                 * @param description 
+                 * @param name Name of the argument.
+                 * @param letter The single-character name of the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                void String(const char *name, char letter, const char *description) {
-                    accu.AddArg(CommandLineArg(name, letter, ArgumentType::String, description));
+                void String(const char *name, char letter, const char *valueName, const char *description) {
+                    accu.AddArg(CommandLineArg(name, letter, ArgumentType::String, valueName, description));
                 }
 
                 /**
                  * @brief Specify an optional argument with double type and
                  * default value.
                  * 
-                 * @param name 
-                 * @param letter 
-                 * @param defaultValue 
-                 * @param description 
+                 * @param name Name of the argument.
+                 * @param letter The single-character name of the argument.
+                 * @param defaultValue Default value for the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                void Double(const char *name, char letter, double defaultValue, const char *description) {
-                    accu.AddArg(CommandLineArg(name, letter, defaultValue, description));
+                void Double(const char *name, char letter, double defaultValue, const char *valueName,
+                        const char *description) {
+                    accu.AddArg(CommandLineArg(name, letter, defaultValue, valueName, description));
                 }
 
                 /**
                  * @brief Specify a mandatory argument with double type.
                  * 
-                 * @param name 
-                 * @param letter 
-                 * @param description 
+                 * @param name Name of the argument.
+                 * @param letter The single-character name of the argument.
+                 * @param valueName For the auto-generated doc only. This is displayed after the
+                 * options of the argument. It should be a short name that describes the accepted values.
+                 * @param description Description of the argument.
                  */
-                void Double(const char *name, char letter, const char *description) {
-                    accu.AddArg(CommandLineArg(name, letter, ArgumentType::Double, description));
+                void Double(const char *name, char letter, const char *valueName, const char *description) {
+                    accu.AddArg(CommandLineArg(name, letter, ArgumentType::Double, valueName, description));
                 }
         };
     }
@@ -618,7 +658,15 @@ namespace CommandLine {
                 char c; // Current byte
                 bool foundSoftHyphen = false;
                 int lastWordPosition = 0; // starting byte position of the last word (inc. breaker)
-                
+
+                /*
+                    This is required in case a word containing a non-breaking
+                    space was wrapped to the next line, and the word contains
+                    2 or more text attribute changes. In this case store only
+                    the first attribute change in the textAttribute register.
+                */
+                bool textAttributeWasSetInLastWord = false;
+
                 /*
                     Restore the text attribute
                 */
@@ -734,8 +782,14 @@ namespace CommandLine {
                                 && text[cursor + 2] >= 48 && text[cursor + 2] <= 56
                                 && text[cursor + 2] != 51 && text[cursor + 2] != 54) {
                                 
-                                textAttribute = text[cursor + 2] - 48;
-                                lastWord << "\033[" << textAttribute << 'm';
+                                int value = text[cursor + 2] - 48;
+
+                                if (!textAttributeWasSetInLastWord) {
+                                    textAttribute = value;
+                                    textAttributeWasSetInLastWord = true;
+                                }
+                                
+                                lastWord << "\033[" << value << 'm';
                                 cursor += 3;
                                 continue;
                             }
@@ -754,6 +808,7 @@ namespace CommandLine {
                         out << lastWord.str();
                         lastWord.str("");
                         lastWord.clear();   // Clear the error state too
+                        textAttributeWasSetInLastWord = false;
 
                         continue;
                     } else if ((!isprint(c) || c == ' ') && c != '\035') {
@@ -766,6 +821,7 @@ namespace CommandLine {
                         lastWord.str("");
                         lastWord.clear();   // Clear the error state too
                         lastWord << ' '; // Keep the space
+                        textAttributeWasSetInLastWord = false;
                         
                         continue;
                     } else {
@@ -996,22 +1052,34 @@ namespace CommandLine {
 
             std::string GenerateDoc() {
                 std::stringstream buff;
+                std::string left;
 
-                buff << "Doc:\n\n";
-
-                buff << this->ColumnFormat(
-                    2,
-                    std::vector<double> { 40, 60 },
-                    std::vector<std::string> {
-                        "--unix-domain-socket, -x\035[value] ",
-                        "Use a unix domain socket for connecting "
-                        "to the \033[1mMonetDB server\033[0m, instead of connecting through TCP/IP. "
-                        "If provided, then the host and port arguments are ignored."
-                    },
-                    std::vector<int> { 1, 0 },
-                    std::vector<int> { 1, 0 },
-                    '|', false
-                );
+                for(const auto &cursor : this->accu.argsByName) {
+                    if (cursor.second.GetArgClass() == Helper::ArgumentClass::Argument) {
+                        left = std::string("\033[1m--" + cursor.second.GetName() + "\033[0m, \033[1m-"
+                            + cursor.second.GetLetter() + "\035\033[2m\033[4m" + cursor.second.GetValueName()
+                            + "\033[0m");
+                    }
+                    else if (cursor.second.GetArgClass() == Helper::ArgumentClass::Option) {
+                        left = std::string("\033[1m--" + cursor.second.GetName() + "\033[0m, \033[1m-"
+                            + cursor.second.GetLetter() + "\033[0m");
+                    }
+                    else {
+                        continue;
+                    }
+                    
+                    buff << this->ColumnFormat(
+                        2,
+                        std::vector<double> { 40, 60 },
+                        std::vector<std::string> {
+                            left,
+                            cursor.second.GetDescription()
+                        },
+                        std::vector<int> { 1, 0 },
+                        std::vector<int> { 1, 0 },
+                        '|', false
+                    );
+                }
 
                 return buff.str();
             }
