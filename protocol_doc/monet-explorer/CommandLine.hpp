@@ -18,6 +18,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -516,49 +517,6 @@ namespace CommandLine {
             int screenWidth;
 
             /**
-             * @brief Trim C string. Designed for argv. Pointers and strings in argv
-             * can be modified freely according to the C99 standard.
-             * 
-             * @param str This function modifies both the pointer and the ending.
-             * @return The size of the string in bytes.
-             */
-            int Trim(char **str) {
-                left_trim:
-                
-                if (**str == '\0') {
-                    return 0;
-                }
-
-                if (!isprint(**str) || **str == ' ') {
-                    (*str)++;
-                    goto left_trim;
-                }
-
-                // Find the ending
-                char *end = *str;
-                do {
-                    end++;
-                }
-                while(*end != '\0');
-
-                right_trim:
-
-                end--;  // at first: end > *str
-
-                if (!isprint(*end) || **str == ' ') {
-                    *end = '\0';
-
-                    if (end > *str) {
-                        goto right_trim;
-                    } else {
-                        return 0;
-                    }
-                }
-
-                return (int)(end - *str) + 1;
-            }
-
-            /**
              * @brief Creates a detailed error string, including
              * the reconstructed command line, and an arrow
              * pointing to the problem.
@@ -603,9 +561,9 @@ namespace CommandLine {
                 buff << "\033[33m" << std::string(windowSize, '-') << "\033[0m" << '\n';
                 buff << "\033[31m" << message << "\033[0m" << "\n\n";
                 buff << line.substr(start, length) << '\n';
-                buff << std::string(head + 1, ' ') << "\033[1m\033[37m" << "^\n";
-                buff << "\033[33m" << std::string(head + 1, '-') << "\033[1m\033[37m" << '|'
-                    << "\033[33m" << std::string(windowSize - head - 2, '-') << "\033[0m";
+                buff << std::string(head, ' ') << "\033[1m\033[37m" << "^\n";
+                buff << "\033[33m" << std::string(head, '-') << "\033[1m\033[37m" << '|'
+                    << "\033[33m" << std::string(windowSize - head - 1, '-') << "\033[0m";
 
                 throw std::runtime_error(buff.str());
             }
@@ -912,9 +870,9 @@ namespace CommandLine {
 
                 for(int i = 0; i < this->argc; i++) {
                     int position = line.tellp();
-                    int length = this->Trim(&(this->argv[i]));
                     char *arg = this->argv[i];
-
+                    int length = strlen(arg);
+                    
                     if (position > 0) {
                         line << " " << arg;
                     }
@@ -1032,7 +990,6 @@ namespace CommandLine {
                         }
                     } catch (const std::runtime_error &err) {
                         for(int j = i + 1; j < this->argc; j++) {
-                            this->Trim(&(this->argv[j]));
                             char *arg = this->argv[j];
 
                             if (line.tellp() > 0) {
@@ -1043,26 +1000,47 @@ namespace CommandLine {
                             }
                         }
 
-                        this->ThrowError(err.what(), line.str(), position);
+                        this->ThrowError(err.what(), line.str(), position + 1);
                     }
+                }
+
+                if (expectArgValue) {
+                    auto msg = line.str();
+                    this->ThrowError("Missing value for argument.", msg, msg.length() - 1);
                 }
 
                 return Arguments(this->accu);
             }
 
-            std::string GenerateDoc() {
+            /**
+             * @brief Auto-generate and return the documentation
+             * to be displayed on a terminal screen.
+             * 
+             * @param softHyphen An optional soft-hyphen character. Set it to 0
+             * to disable this feature.
+             * @param breakAll If true, then the soft hyhen functionality is disabled and
+             * the text can be broken after any character. This is mostly for languages
+             * like Japanese or Chinese.
+             * @return std::string 
+             */
+            std::string GenerateDoc(char softHyphen, bool breakAll) {
                 std::stringstream buff;
                 std::string left;
 
+                /*
+                    Arguments and options
+                */
+                buff << "\033[0m\nArguments and options:\n\n";
+
                 for(const auto &cursor : this->accu.argsByName) {
                     if (cursor.second.GetArgClass() == Helper::ArgumentClass::Argument) {
-                        left = std::string("\033[1m--" + cursor.second.GetName() + "\033[0m, \033[1m-"
+                        left = "\033[1m--" + cursor.second.GetName() + "\033[0m, \033[1m-"
                             + cursor.second.GetLetter() + "\035\033[2m\033[4m" + cursor.second.GetValueName()
-                            + "\033[0m");
+                            + "\033[0m";
                     }
                     else if (cursor.second.GetArgClass() == Helper::ArgumentClass::Option) {
-                        left = std::string("\033[1m--" + cursor.second.GetName() + "\033[0m, \033[1m-"
-                            + cursor.second.GetLetter() + "\033[0m");
+                        left = "\033[1m--" + cursor.second.GetName() + "\033[0m, \033[1m-"
+                            + cursor.second.GetLetter() + "\033[0m";
                     }
                     else {
                         continue;
@@ -1077,6 +1055,27 @@ namespace CommandLine {
                         },
                         std::vector<int> { 1, 0 },
                         std::vector<int> { 1, 0 },
+                        softHyphen, breakAll
+                    );
+                }
+
+                buff << "\033[0m\nPositional operands:\n\n";
+                int number = 0;
+
+                for(const auto &cursor : this->accu.operands) {
+                    number++;
+                    left = "\033[2m" + std::to_string(number) + ". \033[0m\033[1m"
+                        + cursor.GetName() + "\033[0m";
+
+                    buff << this->ColumnFormat(
+                        2,
+                        std::vector<double> { 40, 60 },
+                        std::vector<std::string> {
+                            left,
+                            cursor.GetDescription()
+                        },
+                        std::vector<int> { 1, 0 },
+                        std::vector<int> { 1, 0 },
                         '|', false
                     );
                 }
@@ -1085,14 +1084,40 @@ namespace CommandLine {
             }
 
             /**
-             * @brief 
+             * @brief Wrap a text to the maximal width, to be
+             * outputted on a terminal.
              * 
-             * @param columns 
-             * @param widthWeights 
-             * @param texts 
-             * @param leftPaddings 
-             * @param rightPaddings 
-             * @param softHyphen 
+             * @param text The text to be formatted.
+             * @param leftPadding Padding (number of spaces) on the left side.
+             * @param rightPadding Padding (number of spaces) on the right side.
+             * @param softHyphen An optional soft-hyphen character. Set it to 0
+             * to disable this feature.
+             * @param breakAll If true, then the soft hyhen functionality is disabled and
+             * the text can be broken after any character. This is mostly for languages
+             * like Japanese or Chinese.
+             * @return std::string 
+             */
+            std::string WrapText(std::string text, int leftPadding, int rightPadding, char softHyphen, bool breakAll) {
+                return this->ColumnFormat(
+                    1,
+                    std::vector<double> { 100 },
+                    std::vector<std::string> { text },
+                    std::vector<int> { leftPadding },
+                    std::vector<int> { rightPadding },
+                    softHyphen, breakAll
+                );
+            }
+
+            /**
+             * @brief A powerful formatting tool for wrapping texts of multiple columns.
+             * 
+             * @param columns Number of columns.
+             * @param widthWeights Weights of the column widths. Arbitrary positive floats.
+             * @param texts The texts to be wrapped and displayed.
+             * @param leftPaddings Left paddings per column.
+             * @param rightPaddings Right padding per column.
+             * @param softHyphen An optional soft-hyphen character. Set it to 0
+             * to disable this feature.
              * @param breakAll If true, then the soft hyhen functionality is disabled and
              * the text can be broken after any character. This is mostly for languages
              * like Japanese or Chinese.

@@ -31,10 +31,10 @@ int main(int argc, char *argv[]) {
         cmd.Argument.String("user", 'u', "monetdb", "user_name", "User name for the database login.");
         cmd.Argument.String("password", 'P', "monetdb", "password", "User password for the database login.");
         cmd.Operand("database", "The name of the data|base to connect to.");
-        cmd.Option("unix-domain-socket", 'x', "Use a unix domain socket for connect|ing "
-            "to the \033[1mMonetDB server\033[0m, instead of connect|ing through TCP/IP. "
+        cmd.Option("unix-domain-socket", 'x', "Use a unix domain socket for con|nect|ing "
+            "to the \033[1mMonetDB server\033[0m, instead of con|nect|ing through TCP/IP. "
             "If pro|vi|ded, then the host and port ar|gu|ments are ig|no|red.");
-        cmd.Option("file-transfer", 't', "Enable the file trans|fer pro|to|col for the connect|ion.");
+        cmd.Option("file-transfer", 't', "Enable the file trans|fer pro|to|col for the con|nec|tion.");
         cmd.Argument.String("auth-algo", 'a', "SHA1", "algo", "The hash al|go|rithm to be used "
             "for the 'salted hashing'. The \033[1mMonetDB server\033[0m has to support it. This is "
             "typi|cally a weaker hash al|go|rithm, which is used to|gether with a "
@@ -45,8 +45,17 @@ int main(int argc, char *argv[]) {
         auto args = cmd.Parse();
 
         if (args.IsHelpRequested()) {
-            std::cout << "\n\n Some text \n\n";
-            std::cout << cmd.GenerateDoc();
+            std::cout << "\nMonet-Explorer\n\n";
+            std::cout << cmd.WrapText(
+                "This application helps you to experiment with the text-based \033[1mMAPI protocol\033[0m "
+                "that is used by client applications to communicate with MonetDB.",
+                2, 2, '|', false);
+            std::cout << "Example:\n\n"
+                << cmd.WrapText("\033[1m./monet-explorer\033[0m -h \033[2m\033[4m127.0.0.1\033[0m "
+                    "-u \033[2m\033[4mmonetdb\033[0m -p \033[2m\033[4m50000\033[0m -P "
+                    "\033[2m\033[4mmonetdb\033[0m \033[2m\033[4mMyDatabase\033[0m\n\n",
+                    1, 1, '|', false);
+            std::cout << cmd.GenerateDoc('|', false);
             return 0;
         }
 
