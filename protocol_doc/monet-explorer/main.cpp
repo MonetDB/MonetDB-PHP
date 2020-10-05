@@ -42,8 +42,13 @@ int main(int argc, char *argv[]) {
         cmd.Option("help", '?', "Display the usage instructions.");
         cmd.RestrictOperands();
 
+        cmd.Argument.Double("number", 'n', 123.456, "float", "A double value.");
+
         auto args = cmd.Parse();
 
+        /*
+            Help screen
+        */
         if (args.IsHelpRequested()) {
             std::cout << "\nMonet-Explorer\n\n";
             std::cout << cmd.WrapText(

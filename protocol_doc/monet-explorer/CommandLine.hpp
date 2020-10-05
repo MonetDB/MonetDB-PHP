@@ -274,11 +274,16 @@ namespace CommandLine {
                 std::set<std::string> optionNames;
                 std::vector<std::string> operandValues;
 
+                std::unordered_map<std::string, std::vector<std::string>> stringValuesList;
+                std::unordered_map<std::string, std::vector<int>> intValuesList;
+                std::unordered_map<std::string, std::vector<double>> doubleValuesList;
+
                 /**
                  * @brief Construct a new Argument Accumulator object
                  */
                 ArgumentAccumulator() : restrictOperands(false), executableName(), argsByName(), argsByLetter(),
-                    operands(), stringValues(), intValues(), doubleValues(), optionNames(), operandValues() { }
+                    operands(), stringValues(), intValues(), doubleValues(), optionNames(), operandValues(),
+                    stringValuesList(), intValuesList(), doubleValuesList() { }
 
                 /**
                  * @brief Specify a new argument
@@ -332,31 +337,91 @@ namespace CommandLine {
                     if (arg.GetArgType() == ArgumentType::Int) {
                         char *endPtr;
 
+                        /*
+                            Convert string to int
+                        */
                         int result = strtol(value.c_str(), &endPtr, 10);
                         if (errno == ERANGE) {
-                            throw std::runtime_error("Integer value out of range.");
+                            throw std::runtime_error("Integer value out of range: " + value);
                         }
                         else if (*endPtr != '\0' || errno != 0) {
-                            throw std::runtime_error("Invalid integer value.");
+                            throw std::runtime_error("Invalid integer value: " + value);
                         }
 
-                        this->intValues.insert({ arg.GetName(), result });
+                        /*
+                            Save or update single value
+                        */
+                        auto item = this->intValues.find(arg.GetName());
+                        if (item == this->intValues.end()) {
+                            this->intValues.insert({ arg.GetName(), result });
+                        } else {
+                            item->second = result;
+                        }
+
+                        /*
+                            Add to value list
+                        */
+                        auto listItem = this->intValuesList.find(arg.GetName());
+                        if (listItem == this->intValuesList.end()) {
+                            this->intValuesList.insert({ arg.GetName(), std::vector<int> { result } });
+                        } else {
+                            listItem->second.push_back(result);
+                        }
                     }
                     else if (arg.GetArgType() == ArgumentType::Double) {
                         char *endPtr;
 
+                        /*
+                            Convert string to double
+                        */
                         double result = strtod(value.c_str(), &endPtr);
                         if (errno == ERANGE) {
-                            throw std::runtime_error("Double value out of range.");
+                            throw std::runtime_error("Double value out of range: " + value);
                         }
                         else if (*endPtr != '\0' || errno != 0) {
-                            throw std::runtime_error("Invalid Double value.");
+                            throw std::runtime_error("Invalid Double value: " + value);
                         }
 
-                        this->doubleValues.insert({ arg.GetName(), result });
+                        /*
+                            Save or update single value
+                        */
+                        auto item = this->doubleValues.find(arg.GetName());
+                        if (item == this->doubleValues.end()) {
+                            this->doubleValues.insert({ arg.GetName(), result });
+                        } else {
+                            item->second = result;
+                        }
+
+                        /*
+                            Add to value list
+                        */
+                        auto listItem = this->doubleValuesList.find(arg.GetName());
+                        if (listItem == this->doubleValuesList.end()) {
+                            this->doubleValuesList.insert({ arg.GetName(), std::vector<double> { result } });
+                        } else {
+                            listItem->second.push_back(result);
+                        }
                     }
                     else {
-                        this->stringValues.insert({arg.GetName(), value});
+                        /*
+                            Save or update single value
+                        */
+                        auto item = this->stringValues.find(arg.GetName());
+                        if (item == this->stringValues.end()) {
+                            this->stringValues.insert({arg.GetName(), value});
+                        } else {
+                            item->second = value;
+                        }
+
+                        /*
+                            Add to value list
+                        */
+                        auto listItem = this->stringValuesList.find(arg.GetName());
+                        if (listItem == this->stringValuesList.end()) {
+                            this->stringValuesList.insert({ arg.GetName(), std::vector<std::string> { value } });
+                        } else {
+                            listItem->second.push_back(value);
+                        }
                     }
                 }
         };
@@ -503,6 +568,248 @@ namespace CommandLine {
                 }
 
                 return false;
+            }
+
+            /**
+             * @brief Returns true if an argument with this name
+             * has been specified by the developer.
+             * It can be of any type (argument, option or operand).
+             * 
+             * @param name 
+             * @return bool
+             */
+            bool IsArgumentExist(std::string name) {
+                return this->accu.argsByName.find(name) != this->accu.argsByName.end();
+            }
+
+            /**
+             * @brief Returns true if an option is set,
+             * false otherwise. 
+             * 
+             * @param name 
+             * @return bool
+             * @throw runtime_error If no option was specified with
+             * the given name.
+             */
+            bool IsOptionSet(std::string name) {
+                auto item = this->accu.argsByName.find(name);
+                if (item == this->accu.argsByName.end()) {
+                    throw std::runtime_error("Arguments::IsOptionSet() option with name '"
+                        + name + "' doesn't exist.");
+                }
+
+                if (item->second.GetArgClass() != Helper::ArgumentClass::Option) {
+                    throw std::runtime_error("Arguments::IsOptionSet() argument with name '"
+                        + name + "' is not an option.");
+                }
+
+                return this->accu.optionNames.find(name) != this->accu.optionNames.end();
+            }
+
+            /**
+             * @brief Get the value of the given argument. If the argument
+             * has a default, then it can return that if no values were
+             * passed on the command line. If the argument is set multiple
+             * times, then return the value of the last one.
+             * 
+             * @param argumentName 
+             * @return std::string 
+             * @throw runtime_error If no argument was specified with
+             * the given name and type.
+             */
+            std::string GetStringValue(std::string argumentName) {
+                auto item = this->accu.argsByName.find(argumentName);
+                if (item == this->accu.argsByName.end()) {
+                    throw std::runtime_error("Arguments::GetStringValue(): argument with name '"
+                        + argumentName + "' doesn't exist.");
+                }
+
+                if (item->second.GetArgType() != Helper::ArgumentType::String) {
+                    throw std::runtime_error("Arguments::GetStringValue(): argument with name '"
+                        + argumentName + "' is not of type string.");
+                }
+
+                auto valueItem = this->accu.stringValues.find(argumentName);
+                if (valueItem == this->accu.stringValues.end()) {
+                    return item->second.GetStringDefault();
+                }
+
+                return valueItem->second;
+            }
+
+            /**
+             * @brief If the argument was set multiple times, then
+             * return the values in the same order of occurance as
+             * on the command line. If the argument was not set,
+             * then returns an empty vector.
+             * 
+             * @param argumentName 
+             * @return std::vector<std::string>
+             * @throw runtime_error If no argument was specified with
+             * the given name and type.
+             */
+            std::vector<std::string> GetStringValueList(std::string argumentName) {
+                auto item = this->accu.argsByName.find(argumentName);
+                if (item == this->accu.argsByName.end()) {
+                    throw std::runtime_error("Arguments::GetStringValueList(): argument with name '"
+                        + argumentName + "' doesn't exist.");
+                }
+
+                if (item->second.GetArgType() != Helper::ArgumentType::String) {
+                    throw std::runtime_error("Arguments::GetStringValueList(): argument with name '"
+                        + argumentName + "' is not of type string.");
+                }
+
+                auto valueItem = this->accu.stringValuesList.find(argumentName);
+                if (valueItem == this->accu.stringValuesList.end()) {
+                    return std::vector<std::string>();
+                }
+
+                return valueItem->second;
+            }
+
+            /**
+             * @brief Get the value of the given argument. If the argument
+             * has a default, then it can return that if no values were
+             * passed on the command line. If the argument is set multiple
+             * times, then return the value of the last one.
+             * 
+             * @param argumentName 
+             * @return int
+             * @throw runtime_error If no argument was specified with
+             * the given name and type.
+             */
+            int GetIntValue(std::string argumentName) {
+                auto item = this->accu.argsByName.find(argumentName);
+                if (item == this->accu.argsByName.end()) {
+                    throw std::runtime_error("Arguments::GetIntValue(): argument with name '"
+                        + argumentName + "' doesn't exist.");
+                }
+
+                if (item->second.GetArgType() != Helper::ArgumentType::Int) {
+                    throw std::runtime_error("Arguments::GetIntValue(): argument with name '"
+                        + argumentName + "' is not of type integer.");
+                }
+
+                auto valueItem = this->accu.intValues.find(argumentName);
+                if (valueItem == this->accu.intValues.end()) {
+                    return item->second.GetIntDefault();
+                }
+
+                return valueItem->second;
+            }
+
+            /**
+             * @brief If the argument was set multiple times, then
+             * return the values in the same order of occurance as
+             * on the command line. If the argument was not set,
+             * then returns an empty vector.
+             * 
+             * @param argumentName 
+             * @return std::vector<int>
+             * @throw runtime_error If no argument was specified with
+             * the given name and type.
+             */
+            std::vector<int> GetIntValueList(std::string argumentName) {
+                auto item = this->accu.argsByName.find(argumentName);
+                if (item == this->accu.argsByName.end()) {
+                    throw std::runtime_error("Arguments::GetIntValueList(): argument with name '"
+                        + argumentName + "' doesn't exist.");
+                }
+
+                if (item->second.GetArgType() != Helper::ArgumentType::Int) {
+                    throw std::runtime_error("Arguments::GetIntValueList(): argument with name '"
+                        + argumentName + "' is not of type integer.");
+                }
+
+                auto valueItem = this->accu.intValuesList.find(argumentName);
+                if (valueItem == this->accu.intValuesList.end()) {
+                    return std::vector<int>();
+                }
+
+                return valueItem->second;
+            }
+
+            /**
+             * @brief Get the value of the given argument. If the argument
+             * has a default, then it can return that if no values were
+             * passed on the command line. If the argument is set multiple
+             * times, then return the value of the last one.
+             * 
+             * @param argumentName 
+             * @return double
+             * @throw runtime_error If no argument was specified with
+             * the given name and type.
+             */
+            double GetDoubleValue(std::string argumentName) {
+                auto item = this->accu.argsByName.find(argumentName);
+                if (item == this->accu.argsByName.end()) {
+                    throw std::runtime_error("Arguments::GetDoubleValue(): argument with name '"
+                        + argumentName + "' doesn't exist.");
+                }
+
+                if (item->second.GetArgType() != Helper::ArgumentType::Double) {
+                    throw std::runtime_error("Arguments::GetDoubleValue(): argument with name '"
+                        + argumentName + "' is not of type double.");
+                }
+
+                auto valueItem = this->accu.doubleValues.find(argumentName);
+                if (valueItem == this->accu.doubleValues.end()) {
+                    return item->second.GetDoubleDefault();
+                }
+
+                return valueItem->second;
+            }
+
+            /**
+             * @brief If the argument was set multiple times, then
+             * return the values in the same order of occurance as
+             * on the command line. If the argument was not set,
+             * then returns an empty vector.
+             * 
+             * @param argumentName 
+             * @return std::vector<double>
+             * @throw runtime_error If no argument was specified with
+             * the given name and type.
+             */
+            std::vector<double> GetDoubleValueList(std::string argumentName) {
+                auto item = this->accu.argsByName.find(argumentName);
+                if (item == this->accu.argsByName.end()) {
+                    throw std::runtime_error("Arguments::GetDoubleValueList(): argument with name '"
+                        + argumentName + "' doesn't exist.");
+                }
+
+                if (item->second.GetArgType() != Helper::ArgumentType::Double) {
+                    throw std::runtime_error("Arguments::GetDoubleValueList(): argument with name '"
+                        + argumentName + "' is not of type double.");
+                }
+
+                auto valueItem = this->accu.doubleValuesList.find(argumentName);
+                if (valueItem == this->accu.doubleValuesList.end()) {
+                    return std::vector<double>();
+                }
+
+                return valueItem->second;
+            }
+
+            /**
+             * @brief Returns the first part of the command line string,
+             * which is the name (and path) of the executable.
+             * 
+             * @return std::string 
+             */
+            std::string GetExecutableName() {
+                return this->accu.executableName;
+            }
+
+            /**
+             * @brief Returns all operand values preserving
+             * the order they were passed on the command line.
+             * 
+             * @return std::vector<std::string> 
+             */
+            std::vector<std::string> GetOperands() {
+                return this->accu.operandValues;
             }
     };
 
@@ -820,6 +1127,20 @@ namespace CommandLine {
              */
             Parser(int argc, char *argv[]) : argc(argc), argv(argv), accu(), Argument(accu) {
                 this->screenWidth = 80;
+            }
+
+            /**
+             * @brief Set the screen width for the console output.
+             * It is set to 80 by default.
+             * 
+             * @param width 
+             */
+            void SetScreenWidth(int width) {
+                if (width < 5) {
+                    throw std::runtime_error("Parser::SetScreenWidth(): The width value must be at least 5.");
+                }
+
+                this->screenWidth = width;
             }
 
             /**
