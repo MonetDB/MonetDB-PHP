@@ -16,18 +16,89 @@
 #pragma once
 
 #include "CommandLine.hpp"
+#include "Connection.hpp"
+#include "ServerChallenge.hpp"
 
+namespace MonetExplorer {
+    /**
+     * @brief Main logic of the client application.
+     */
+    class Client {
+        private:
+            CommandLine::Arguments &args;
+            Connection connection;
 
-class Client {
-    private:
-        CommandLine::Arguments &args;
+        public:
+            /**
+             * @brief Construct a new Client object
+             * 
+             * @param args Command line arguments.
+             */
+            Client(CommandLine::Arguments &args) : args(args), connection() { }
 
-    public:
-        Client(CommandLine::Arguments &args) : args(args) {
+            /**
+             * @brief Start the client application.
+             */
+            void Start() {
+                if (args.GetStringValue("database") == "") {
+                    throw std::runtime_error("Please specify a database to connect to.");
+                }
 
-        }
+                /*
+                    Connect to the server
+                */
+                this->connection.Connect(
+                    args.GetStringValue("host"),
+                    args.GetIntValue("port")
+                );
 
-        void Start() {
-            
-        }
-};
+                std::string msg;
+
+                std::cout << '\n';
+
+                /*
+                    Authentication
+                */
+                for (int i = 0; i <= 10; i++) {
+                    if (i == 10) {
+                        throw std::runtime_error("Authentication failed: Too many Merovingian redirects.");
+                    }
+
+                    msg = this->connection.ReceiveMessage();
+                    std::cout << "\nReceived:\n" << msg << std::endl;
+
+                    if (msg.rfind("^mapi:merovingian:", 0) == 0) {
+                        // Merovingian redirect
+                        continue;
+                    } else if (msg == "") {
+                        // Successful authentication
+                        break;
+                    } else if (msg.rfind("!", 0) == 0) {
+                        throw std::runtime_error("Authentication failed: " + msg);
+                    }
+
+                    ServerChallenge challenge(msg);
+                    msg = challenge.Authenticate(
+                        args.GetStringValue("user"),
+                        args.GetStringValue("password"),
+                        args.GetStringValue("database")
+                    );
+                    std::cout << "\nSent:\n" << msg << std::endl;
+
+                    this->connection.SendMessage(msg);
+                }
+
+                /*
+                    Communication
+                */
+                while(true) {
+                    std::cout << "Enter message to send:\n";
+                    std::getline(std::cin, msg);
+                    this->connection.SendMessage(msg);
+                    
+                    msg = this->connection.ReceiveMessage();
+                    std::cout << "Response:\n" << msg << "\n";
+                }
+            }
+    };
+}

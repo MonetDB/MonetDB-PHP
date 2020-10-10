@@ -890,6 +890,19 @@ namespace CommandLine {
                 }
 
                 this->accu.operandValues.push_back(std::string(value));
+
+                int size = this->accu.operands.size();
+                if (size < 1) {
+                    return;
+                }
+
+                int index = this->accu.operandValues.size();
+                
+                if (size <= index) {
+                    index = size - 1;
+                }
+
+                this->accu.SetValue(this->accu.operands[size - 1], value);
             }
 
             /**

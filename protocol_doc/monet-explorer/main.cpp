@@ -42,8 +42,6 @@ int main(int argc, char *argv[]) {
         cmd.Option("help", '?', "Display the usage instructions.");
         cmd.RestrictOperands();
 
-        cmd.Argument.Double("number", 'n', 123.456, "float", "A double value.");
-
         auto args = cmd.Parse();
 
         /*
@@ -52,13 +50,13 @@ int main(int argc, char *argv[]) {
         if (args.IsHelpRequested()) {
             std::cout << "\nMonet-Explorer\n\n";
             std::cout << cmd.WrapText(
-                "This application helps you to experiment with the text-based \033[1mMAPI protocol\033[0m "
-                "that is used by client applications to communicate with MonetDB.",
+                "This application helps you to ex|per|i|ment with the text-based \033[1mMAPI protocol\033[0m "
+                "that is used by client ap|pli|ca|tions to com|mu|ni|cate with MonetDB.",
                 2, 2, '|', false);
             std::cout << "Example:\n\n"
-                << cmd.WrapText("\033[1m./monet-explorer\033[0m -h \033[2m\033[4m127.0.0.1\033[0m "
-                    "-u \033[2m\033[4mmonetdb\033[0m -p \033[2m\033[4m50000\033[0m -P "
-                    "\033[2m\033[4mmonetdb\033[0m \033[2m\033[4mMyDatabase\033[0m\n\n",
+                << cmd.WrapText("\033[1m./monet-explorer\033[0m \033[1m-h\033[0m \033[4m127.0.0.1\033[0m "
+                    "\033[1m-u\033[0m \033[4mmonetdb\033[0m \033[1m-p\033[0m \033[4m50000\033[0m \033[1m-P\033[0m "
+                    "\033[4mmonetdb\033[0m \033[4mMyDatabase\033[0m\n\n",
                     1, 1, '|', false);
             std::cout << cmd.GenerateDoc('|', false);
             return 0;
@@ -67,7 +65,7 @@ int main(int argc, char *argv[]) {
         /*
             Start the client
         */
-        Client client(args);
+        MonetExplorer::Client client(args);
         client.Start();
         
     } catch (const std::runtime_error &err) {
