@@ -28,6 +28,109 @@ namespace MonetExplorer {
             CommandLine::Arguments &args;
             Connection connection;
 
+            /**
+             * @brief Format a message for the console output.
+             * Highlight special characters with colors, etc.
+             * Supports UTF-8.
+             * 
+             * @param msg The message to be formatted.
+             * @param isSent True = sent to the server, False = received from it.
+             * @param output Most probably std::cout.
+             */
+            void PrintFormatted(std::string &msg, bool isSent, std::ostream &output) {
+                int mb_remain = 0;  // Bytes remaining from a multi-byte character
+                const char *pos = msg.c_str();
+                const char *endPos = pos + msg.length();
+                char c = ' ';
+
+                if (isSent) {
+                    output << "\033[32mSent:\033[0m\n";
+                } else {
+                    output << "\033[32mReceived:\033[0m\n";
+                }
+
+                for(; pos < endPos; pos++) {
+                    c = *pos;
+
+                    /*
+                        Handle UTF-8
+                        https://stackoverflow.com/a/44568131/6630230
+                    */
+                    if (mb_remain > 0) {
+                        // Check for UTF-8 errors
+                        if ((c & 0xC0) != 0x80) {
+                            // Non-expected byte header
+                            //  => Treat it as a new character
+                            mb_remain = 0;
+                            goto utf8_checks;
+                        }
+
+                        output << c;
+                        continue;
+                    }
+
+                    utf8_checks:
+                    
+                    if ((c & 0xE0) == 0xC0) {
+                        mb_remain = 1;
+                        output << c;
+                        continue;
+                    } else if ((c & 0xF0) == 0xE0) {
+                        mb_remain = 2;
+                        output << c;
+                        continue;
+                    } else if ((c & 0xF8) == 0xF0) {
+                        mb_remain = 3;
+                        output << c;
+                        continue;
+                    }
+
+                    /*
+                        Printable characters
+                    */
+                    if (isprint(c)) {
+                        output << c;
+                        continue;
+                    }
+
+                    /*
+                        Control and other special characters.
+                    */
+                    output << "\033[44m\033[97m";   // bg, fg
+
+                    if (c == '\n') {
+                        output << "\\n";
+                    }
+                    else if (c == '\t') {
+                        output << "\\t";
+                    }
+                    else if (c == '\r') {
+                        output << "\\r";
+                    }
+                    else if (c == '\f') {
+                        output << "\\f";
+                    }
+                    else {
+                        // Octal codes for all the others
+                        output << "\\";
+
+                        for(int shift = 6; shift >= 0; shift -= 3) {
+                            output << (char)('0' + ((c >> shift) & 7));
+                        }
+                    }
+
+                    output << "\033[0m";
+
+                    if (c == '\n') {
+                        output << c;
+                    }
+                }
+
+                if (c != '\n') {
+                    output << '\n';
+                }
+            }
+
         public:
             /**
              * @brief Construct a new Client object
@@ -47,14 +150,19 @@ namespace MonetExplorer {
                 /*
                     Connect to the server
                 */
-                this->connection.Connect(
-                    args.GetStringValue("host"),
-                    args.GetIntValue("port")
-                );
+                if (args.IsOptionSet("unix-domain-socket")) {
+                    this->connection.ConnectUnix(
+                        args.GetIntValue("port")
+                    );
+                } else {
+                    this->connection.ConnectTCP(
+                        args.GetStringValue("host"),
+                        args.GetIntValue("port")
+                    );
+                }
 
+                std::cout << "\033[32mConnected.\033[0m\n";                
                 std::string msg;
-
-                std::cout << '\n';
 
                 /*
                     Authentication
@@ -65,7 +173,7 @@ namespace MonetExplorer {
                     }
 
                     msg = this->connection.ReceiveMessage();
-                    std::cout << "\nReceived:\n" << msg << std::endl;
+                    this->PrintFormatted(msg, false, std::cout);
 
                     if (msg.rfind("^mapi:merovingian:", 0) == 0) {
                         // Merovingian redirect
@@ -81,9 +189,11 @@ namespace MonetExplorer {
                     msg = challenge.Authenticate(
                         args.GetStringValue("user"),
                         args.GetStringValue("password"),
-                        args.GetStringValue("database")
+                        args.GetStringValue("database"),
+                        args.GetStringValue("auth-algo"),
+                        args.IsOptionSet("file-transfer")
                     );
-                    std::cout << "\nSent:\n" << msg << std::endl;
+                    this->PrintFormatted(msg, true, std::cout);
 
                     this->connection.SendMessage(msg);
                 }
@@ -91,14 +201,26 @@ namespace MonetExplorer {
                 /*
                     Communication
                 */
-                while(true) {
-                    std::cout << "Enter message to send:\n";
-                    std::getline(std::cin, msg);
-                    this->connection.SendMessage(msg);
+                do {
+                    std::stringstream multiLine;
+                    std::cout << "\033[32mEnter message:\033[0m\n";
+                    while(true) {
+                        std::getline(std::cin, msg);
+                        if (msg != "") {
+                            multiLine << msg << '\n';
+                        } else {
+                            break;
+                        }
+                    }
                     
+                    msg = multiLine.str();
+                    this->connection.SendMessage(msg);
+
                     msg = this->connection.ReceiveMessage();
-                    std::cout << "Response:\n" << msg << "\n";
-                }
+                    this->PrintFormatted(msg, false, std::cout);
+                } while (this->connection.IsConnected());
+
+                std::cout << "\033[32mServer disconnected.\033[0m\n";
             }
     };
 }

@@ -7,5 +7,5 @@ that is used by client applications to communicate with MonetDB.
 # Build
 
 ```
-# apt-get install g++ cpp make libssl-dev
+# apt-get install g++ make libssl-dev
 ```

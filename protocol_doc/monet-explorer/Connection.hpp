@@ -20,6 +20,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <strings.h>
 #include <sstream>
 #include <cstring>
@@ -117,12 +118,6 @@ namespace MonetExplorer {
              */
             Connection() {
                 this->buffer = new char[BUFFER_SIZE];
-
-                this->clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-                if (this->clientSocket == -1) {
-                    throw std::runtime_error("Failed to create socket. Error: '" + std::string(strerror(errno))
-                        + "' (" + std::to_string(errno) + ")");
-                }
             }
 
             /**
@@ -159,15 +154,27 @@ namespace MonetExplorer {
             }
 
             /**
-             * @brief Connect to a server.
+             * @brief Connect to a server through TCP/IP.
              * 
              * @param host Host name of the server.
              * @param port Port of the server.
              */
-            void Connect(std::string host, int port) {
+            void ConnectTCP(std::string host, int port) {
                 if (this->connected) {
-                    throw std::runtime_error("Connection::Connect(): Already connected to the server. "
+                    throw std::runtime_error("Connection::ConnectTCP(): Already connected to the server. "
                         "(Method is called twice.)");
+                }
+
+                /*
+                    Connect through TCP/IP.
+                */
+                std::cout << "\033[32mConnecting through TCP/IP to: " << host << ':'
+                    << port << "\033[0m\n";
+
+                this->clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+                if (this->clientSocket == -1) {
+                    throw std::runtime_error("Failed to create socket. Error: '" + std::string(strerror(errno))
+                        + "' (" + std::to_string(errno) + ")");
                 }
 
                 struct sockaddr_in serverAddress;
@@ -183,6 +190,51 @@ namespace MonetExplorer {
                 }
 
                 this->connected = true;
+            }
+
+            /**
+             * @brief Connect to the server though Unix
+             * domain socket.
+             * 
+             * @param port The port of the server is part of the
+             * name of the files which represent these sockets.
+             * Therefore it's required for finding the files.
+             */
+            void ConnectUnix(int port) {
+                if (this->connected) {
+                    throw std::runtime_error("Connection::ConnectUnix(): Already connected to the server. "
+                        "(Method is called twice.)");
+                }
+
+                std::cout << "\033[32mConnecting through Unix domain socket.\033[0m\n";
+
+                this->clientSocket = socket(AF_UNIX, SOCK_STREAM, 0);
+                if (this->clientSocket == -1) {
+                    throw std::runtime_error("Failed to create socket. Error: '" + std::string(strerror(errno))
+                        + "' (" + std::to_string(errno) + ")");
+                }
+
+                std::vector<std::string> paths ({
+                    "/tmp/.s.monetdb." + std::to_string(port),
+                    "/tmp/.s.merovingian." + std::to_string(port)
+                });
+
+                for(const std::string &path : paths) {
+                    std::cout << "\033[32mTrying: " << path << "\033[0m\n";
+
+                    struct sockaddr_un serverAddress;
+                    bzero(&serverAddress, sizeof(serverAddress));
+                    serverAddress.sun_family = AF_UNIX;
+                    std::memcpy(serverAddress.sun_path, path.c_str(), path.length() + 1);
+
+                    if (connect(this->clientSocket, (sockaddr*)&serverAddress, sizeof(serverAddress)) == 0) {
+                        this->connected = true;
+                        return;
+                    }
+                }
+
+                throw std::runtime_error("Failed to connect to the server. Error: '"
+                    + std::string(strerror(errno)) + "' (" + std::to_string(errno) + ")");
             }
 
             /**

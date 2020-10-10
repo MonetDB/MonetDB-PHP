@@ -250,14 +250,14 @@ interactive queries.
 
         sSET TIME ZONE INTERVAL '+02:00' HOUR TO MINUTE;
     
-    Select the default schema:
+    Select the default schema: (Put the name in quotes if it contains upper-case characters.)
 
-        sSET SCHEMA mySchema;
+        sSET SCHEMA "mySchema";
 
     Query the contents of a table:
 
         sSELECT *
-        FROM myTable;
+        FROM "myTable";
 
     Notice that the query can contain EOL characters.
 

@@ -37,6 +37,8 @@ namespace MonetExplorer {
             std::string endianness;
             std::string passwordHashAlgo;
             const char *hexa = "0123456789abcdef";
+            char *bufferBin = 0;
+            char *bufferHex = 0;
 
             /**
              * @brief Converts binary data to hex.
@@ -52,24 +54,43 @@ namespace MonetExplorer {
                 }
             }
 
+            /**
+             * @brief SHA512 hash
+             * 
+             * @param data Input
+             * @return std::string Output
+             */
             std::string Sha512(std::string data) {
-                char bin[64];
-                char hex[128];
+                SHA512((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
+                this->BinToHex(this->bufferBin, 64, this->bufferHex);
 
-                SHA512((unsigned char*)data.c_str(), data.length(), (unsigned char*)bin);
-                this->BinToHex(bin, 64, hex);
-
-                return std::string(hex, 128);
+                return std::string(this->bufferHex, 128);
             }
 
+            /**
+             * @brief SHA256 hash
+             * 
+             * @param data Input
+             * @return std::string Output
+             */
+            std::string Sha256(std::string data) {
+                SHA256((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
+                this->BinToHex(this->bufferBin, 32, this->bufferHex);
+
+                return std::string(this->bufferHex, 64);
+            }
+
+            /**
+             * @brief SHA1 hash
+             * 
+             * @param data Input
+             * @return std::string Output
+             */
             std::string Sha1(std::string data) {
-                char bin[20];
-                char hex[40];
+                SHA1((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
+                this->BinToHex(this->bufferBin, 20, this->bufferHex);
 
-                SHA1((unsigned char*)data.c_str(), data.length(), (unsigned char*)bin);
-                this->BinToHex(bin, 20, hex);
-
-                return std::string(hex, 40);
+                return std::string(this->bufferHex, 40);
             }
 
         public:
@@ -84,6 +105,9 @@ namespace MonetExplorer {
                 if (msg.length() < 1) {
                     throw std::runtime_error("Empty message received. Expected server challenge.");
                 }
+
+                this->bufferBin = new char[64];
+                this->bufferHex = new char[128];
                 
                 const char *pos = msg.c_str();
                 const char *start = pos;
@@ -168,20 +192,49 @@ namespace MonetExplorer {
             }
 
             /**
+             * @brief Destroy the Server Challenge object
+             */
+            ~ServerChallenge() {
+                if (this->bufferBin != 0) {
+                    delete[] this->bufferBin;
+                }
+
+                if (this->bufferHex != 0) {
+                    delete[] this->bufferHex;
+                }
+            }
+
+            /**
              * @brief Generates the response message to the server
              * challenge, for the authentication.
              * 
              * @param user MonetDB user name.
              * @param password User password.
              * @param database The name of the database to connect to.
+             * @param proto The protocol to be used. Currently supported: SHA1, SHA256, SHA512
+             * @param enableFileTransfer Request for enabling the file transfer feature.
+             *      (Transferring CSV files directly in the client-server connection, unparsed.)
              * @return std::string 
              */
-            std::string Authenticate(std::string user, std::string password, std::string database) {
+            std::string Authenticate(std::string user, std::string password, std::string database,
+                    std::string proto, bool enableFileTransfer) {
+                
+                if (this->protocols.find(proto) == this->protocols.end()) {
+                    throw std::runtime_error("The protocol '" + proto + "' chosen from the command line "
+                        "is not supported by the server. (Please check if it's upper-case.)");
+                }
+                
                 std::stringstream buff;
                 std::string pwHash = this->Sha1(this->Sha512(password) + this->salt);
                 
                 buff << this->endianness << ':' << user << ':' << "{SHA1}" << pwHash 
-                    << ":sql:" << database << ":\n";
+                    << ":sql:" << database << ':';
+                
+                if (enableFileTransfer) {
+                    buff << "FILETRANS";
+                }
+                
+                buff  << "\n";
 
                 return buff.str();
             }

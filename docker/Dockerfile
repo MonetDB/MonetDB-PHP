@@ -38,7 +38,7 @@ save_history=true\n\
 # Basic installs
 #######################################################################
 RUN apt-get -y update\
-    && apt-get -y install apt-utils locales wget curl tzdata g++ make \
+    && apt-get -y install apt-utils locales wget curl tzdata g++ make libssl-dev \
         ca-certificates openssl net-tools gnupg cron dialog supervisor
 
 #######################################################################

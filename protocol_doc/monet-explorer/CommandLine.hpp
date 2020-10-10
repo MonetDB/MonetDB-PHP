@@ -550,27 +550,6 @@ namespace CommandLine {
             Arguments(Helper::ArgumentAccumulator &accu) : accu(accu) { }
 
             /**
-             * @brief Returns true if no arguments were
-             * provided or if the "--help" argument is
-             * present.
-             * 
-             * @return bool
-             */
-            bool IsHelpRequested() {
-                if ((int)this->accu.operands.size() < 1 && (int)this->accu.optionNames.size() < 1
-                    && (int)this->accu.argsByName.size() < 1) {
-                    
-                    return true;
-                }
-
-                if (this->accu.optionNames.find(std::string("help")) != this->accu.optionNames.end()) {
-                    return true;
-                }
-
-                return false;
-            }
-
-            /**
              * @brief Returns true if an argument with this name
              * has been specified by the developer.
              * It can be of any type (argument, option or operand).
@@ -946,6 +925,15 @@ namespace CommandLine {
                 bool textAttributeWasSetInLastWord = false;
 
                 /*
+                    The word that came before the last word ended in a hyphen.
+                    This is important for the case when a soft hypen is
+                    used after a dash, like in "sugar-|free". Normally hypens
+                    don't break, but only if a soft hyphen is added after them.
+                    This variable prevents adding a second hyphen.
+                */
+                bool beforeLastWordEndedInHyphen = false;
+
+                /*
                     Restore the text attribute
                 */
                 out << "\033[" << textAttribute << 'm';
@@ -1020,7 +1008,14 @@ namespace CommandLine {
                             Drop current word
                         */
                         if (foundSoftHyphen) {
-                            out << '-';
+                            if (!beforeLastWordEndedInHyphen) {
+                                /*
+                                    Output a dash for the soft hyphen only when
+                                    the word before the last word doesn't start
+                                    with a hyphen.
+                                */
+                                out << '-';
+                            }
                         }
 
                         cursor = lastWordPosition;
@@ -1084,6 +1079,13 @@ namespace CommandLine {
                         charCount += lastWordCharCount;
                         lastWordCharCount = 0;
                         out << lastWord.str();
+
+                        if (lastWord.str().back() == '-') {
+                            beforeLastWordEndedInHyphen = true;
+                        } else {
+                            beforeLastWordEndedInHyphen = false;
+                        }
+
                         lastWord.str("");
                         lastWord.clear();   // Clear the error state too
                         textAttributeWasSetInLastWord = false;
@@ -1096,6 +1098,13 @@ namespace CommandLine {
                         charCount += lastWordCharCount;
                         lastWordCharCount = 1;
                         out << lastWord.str();
+
+                        if (lastWord.str().back() == '-') {
+                            beforeLastWordEndedInHyphen = true;
+                        } else {
+                            beforeLastWordEndedInHyphen = false;
+                        }
+
                         lastWord.str("");
                         lastWord.clear();   // Clear the error state too
                         lastWord << ' '; // Keep the space
