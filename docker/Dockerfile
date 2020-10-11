@@ -21,18 +21,15 @@ WORKDIR /tmp
 ENV DEBIAN_FRONTEND noninteractive
 
 #######################################################################
-# Create host user
+# Create user
 #######################################################################
-ARG ENV_USER_ID
-ARG ENV_USER_NAME
-
 RUN printf "\
 user=monetdb\n\
 password=monetdb\n\
 language=sql\n\
 save_history=true\n\
 " > /etc/skel/.monetdb \
-    && useradd -m -s /bin/bash -u $ENV_USER_ID $ENV_USER_NAME
+    && useradd -m -s /bin/bash mphp
 
 #######################################################################
 # Basic installs
@@ -71,12 +68,12 @@ deb-src https://dev.monetdb.org/downloads/deb/ bionic monetdb\n\
     && curl 'https://www.monetdb.org/downloads/MonetDB-GPG-KEY' | apt-key add - \
     && apt-get -y update \
     && apt-get -y install monetdb5-sql monetdb-client \
-    && chown -R ${ENV_USER_NAME}:${ENV_USER_NAME} /var/monetdb5/dbfarm \
-    && chown -R ${ENV_USER_NAME}:${ENV_USER_NAME} /var/log/monetdb \
-    && chown -R ${ENV_USER_NAME}:${ENV_USER_NAME} /run/monetdb \
-    && usermod -a -G monetdb $ENV_USER_NAME \
-    && su ${ENV_USER_NAME} -c "monetdbd start /var/monetdb5/dbfarm && monetdb create myDatabase" \
-    && su ${ENV_USER_NAME} -c "monetdb release myDatabase && monetdb start myDatabase"
+    && chown -R mphp:mphp /var/monetdb5/dbfarm \
+    && chown -R mphp:mphp /var/log/monetdb \
+    && chown -R mphp:mphp /run/monetdb \
+    && usermod -a -G monetdb mphp \
+    && su mphp -c "monetdbd start /var/monetdb5/dbfarm && monetdb create myDatabase" \
+    && su mphp -c "monetdb release myDatabase && monetdb start myDatabase"
 
 #######################################################################
 # Apache + PHP
@@ -101,7 +98,7 @@ Alias /MonetDB-PHP /var/MonetDB-PHP/Examples/WebQuery/www/\n\
 \
     && ln -s /etc/apache2/conf-available/monet-browser.conf \
         /etc/apache2/conf-enabled/monet-browser.conf \
-    && usermod -a -G www-data $ENV_USER_NAME
+    && usermod -a -G www-data mphp
 
 #################################################################
 # Supervisor
@@ -131,13 +128,13 @@ while [ -f /run/monetdb/merovingian.pid ] && kill -0 $(cat /run/monetdb/meroving
 done\n\
 " > /var/monetdb.sh \
 \
-    && chown ${ENV_USER_NAME}:${ENV_USER_NAME} /var/monetdb.sh \
+    && chown mphp:mphp /var/monetdb.sh \
     && chmod 754 /var/monetdb.sh \
 \
     && printf "\
 [program:monetdbd]\n\
 command=/var/monetdb.sh\n\
-user="${ENV_USER_NAME}"\n\
+user=mphp\n\
 numprocs=1\n\
 autostart=true\n\
 autorestart=true\n\

@@ -66,6 +66,10 @@ int main(int argc, char *argv[]) {
             return 0;
         }
 
+        if (args.IsOptionSet("unix-domain-socket")) {
+            throw std::runtime_error("The Unix domain socket feature is not finalized yet.");
+        }
+
         /*
             Start the client
         */
