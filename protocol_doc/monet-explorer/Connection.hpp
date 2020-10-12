@@ -215,8 +215,7 @@ namespace MonetExplorer {
                 }
 
                 std::vector<std::string> paths ({
-                    "/tmp/.s.monetdb." + std::to_string(port),
-                    "/tmp/.s.merovingian." + std::to_string(port)
+                    "/tmp/.s.monetdb." + std::to_string(port)
                 });
 
                 for(const std::string &path : paths) {
@@ -228,6 +227,9 @@ namespace MonetExplorer {
                     std::memcpy(serverAddress.sun_path, path.c_str(), path.length() + 1);
 
                     if (connect(this->clientSocket, (sockaddr*)&serverAddress, sizeof(serverAddress)) == 0) {
+                        // See: https://github.com/MonetDB/MonetDB/blob/1f1bbdbd3340fdb74345723e8c98c120dcaf2ead/clients/mapilib/mapi.c#L2416
+                        this->buffer[0] = '0';
+                        this->WriteExact(1);
                         this->connected = true;
                         return;
                     }
@@ -278,21 +280,19 @@ namespace MonetExplorer {
                             + std::to_string(BUFFER_SIZE - 2) + " bytes payload. " + std::to_string(payloadSize));
                     }
 
-                    if (payloadSize == 0) {
-                        return std::string("");
-                    }
-
                     /*
                         Read payload
                     */
-                    response = this->ReadExact(payloadSize, true);
-                    if (response == 0) {
-                        // Server closed the connection.
-                        this->Disconnect();
-                        return message.str();
-                    }
+                    if (payloadSize > 0) {
+                        response = this->ReadExact(payloadSize, true);
+                        if (response == 0) {
+                            // Server closed the connection.
+                            this->Disconnect();
+                            return message.str();
+                        }
 
-                    message.write(this->buffer, payloadSize);
+                        message.write(this->buffer, payloadSize);
+                    }
                 } while (!isLastPacket);
 
                 return message.str();
