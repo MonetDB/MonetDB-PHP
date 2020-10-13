@@ -37,7 +37,7 @@ namespace MonetExplorer {
              * @param isSent True = sent to the server, False = received from it.
              * @param output Most probably std::cout.
              */
-            void PrintFormatted(std::string &msg, bool isSent, std::ostream &output) {
+            void PrintFormatted(const std::string &msg, bool isSent, std::ostream &output) {
                 int mb_remain = 0;  // Bytes remaining from a multi-byte character
                 const char *pos = msg.c_str();
                 const char *endPos = pos + msg.length();
@@ -151,17 +151,22 @@ namespace MonetExplorer {
                     Connect to the server
                 */
                 if (args.IsOptionSet("unix-domain-socket")) {
+                    std::cout << "\033[32mConnecting through Unix domain socket.\033[0m\n";
+
                     this->connection.ConnectUnix(
                         args.GetIntValue("port")
                     );
                 } else {
+                    std::cout << "\033[32mConnecting through TCP/IP to: " << args.GetStringValue("host") << ':'
+                        << args.GetIntValue("port") << "\033[0m\n";
+
                     this->connection.ConnectTCP(
                         args.GetStringValue("host"),
                         args.GetIntValue("port")
                     );
                 }
 
-                std::cout << "\033[32mConnected.\033[0m\n";                
+                std::cout << "\033[32mConnected.\033[0m\n";
                 std::string msg;
 
                 /*
@@ -197,6 +202,8 @@ namespace MonetExplorer {
 
                     this->connection.SendMessage(msg);
                 }
+
+                std::cout << "\033[32mAuthenticated.\033[0m\n";
 
                 /*
                     Communication

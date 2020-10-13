@@ -168,9 +168,6 @@ namespace MonetExplorer {
                 /*
                     Connect through TCP/IP.
                 */
-                std::cout << "\033[32mConnecting through TCP/IP to: " << host << ':'
-                    << port << "\033[0m\n";
-
                 this->clientSocket = socket(AF_INET, SOCK_STREAM, 0);
                 if (this->clientSocket == -1) {
                     throw std::runtime_error("Failed to create socket. Error: '" + std::string(strerror(errno))
@@ -205,8 +202,6 @@ namespace MonetExplorer {
                     throw std::runtime_error("Connection::ConnectUnix(): Already connected to the server. "
                         "(Method is called twice.)");
                 }
-
-                std::cout << "\033[32mConnecting through Unix domain socket.\033[0m\n";
 
                 this->clientSocket = socket(AF_UNIX, SOCK_STREAM, 0);
                 if (this->clientSocket == -1) {
@@ -303,7 +298,7 @@ namespace MonetExplorer {
              * 
              * @param message 
              */
-            void SendMessage(std::string &message) {
+            void SendMessage(const std::string &message) {
                 const char *pos = message.c_str();
                 int remaining = message.length();
                 int packetSize;

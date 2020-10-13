@@ -61,7 +61,7 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string Sha512(std::string &data) {
+            std::string Sha512(const std::string &data) {
                 SHA512((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 64, this->bufferHex);
 
@@ -74,7 +74,7 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string Sha256(std::string &data) {
+            std::string Sha256(const std::string &data) {
                 SHA256((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 32, this->bufferHex);
 
@@ -87,7 +87,7 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string Sha1(std::string &data) {
+            std::string Sha1(const std::string &data) {
                 SHA1((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 20, this->bufferHex);
 
@@ -100,7 +100,7 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string Sha384(std::string &data) {
+            std::string Sha384(const std::string &data) {
                 SHA384((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 48, this->bufferHex);
 
@@ -113,7 +113,7 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string Sha224(std::string &data) {
+            std::string Sha224(const std::string &data) {
                 SHA224((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 28, this->bufferHex);
 
@@ -126,7 +126,7 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string RipeMd160(std::string &data) {
+            std::string RipeMd160(const std::string &data) {
                 RIPEMD160((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 20, this->bufferHex);
 
@@ -139,7 +139,7 @@ namespace MonetExplorer {
              * 
              * @param msg The message received from the server.
              */
-            ServerChallenge(std::string &msg) : salt(), backend(), version(0), protocols(),
+            ServerChallenge(const std::string &msg) : salt(), backend(), version(0), protocols(),
                     endianness(), passwordHashAlgo() {
 
                 if (msg.length() < 1) {
