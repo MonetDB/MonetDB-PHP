@@ -24,9 +24,10 @@ Arguments and options:
  --auth-algo, -a algo            The hash algorithm to be used for the 'salted
                                  hashing'. The MonetDB server has to support it.
                                  This is typically a weaker hash algorithm,
-                                 which is used together with a stronger 'pass-
+                                 which is used together with the stronger 'pass-
                                  word hash' that is now SHA512. The currently
-                                 supported values are: SHA1, SHA256, SHA512.
+                                 supported values are: SHA1, SHA256, SHA512,
+                                 RIPEMD160, SHA224, SHA384. Default is SHA1.
 
  --file-transfer, -t             Enable the file transfer protocol for the con-
                                  nection.
@@ -39,7 +40,8 @@ Arguments and options:
  --password, -P password         User password for the database login. The de-
                                  fault value is 'monetdb'.
 
- --port, -p port                 The port of the MonetDB server.
+ --port, -p port                 The port of the MonetDB server. The default
+                                 value is 50000.
 
  --unix-domain-socket, -x        Use a unix domain socket for connecting to the
                                  MonetDB server, instead of connecting through
@@ -48,12 +50,14 @@ Arguments and options:
                                  socket file with the proper name in the /tmp
                                  folder.
 
- --user, -u user_name            User name for the database login.
+ --user, -u user_name            User name for the database login. The default
+                                 value is 'monetdb'.
 
 
 Positional operands:
 
  1. database                     The name of the database to connect to.
+
 ```
 
 # Build

@@ -18,7 +18,9 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -903,9 +905,11 @@ namespace CommandLine {
              * per columns between calls. Examples: bold, underline.
              * @param out The resulting characters will be appended to this
              * string stream.
+             * @param breakAll Break text after every character.
+             * For languages like Japanese and Chinese.
              */
-            inline void FormatLine(std::string &text, int &cursor, int limit, char softHypen,
-                    int &textAttribute, std::stringstream &out) {
+            inline void FormatLine(const std::string &text, int &cursor, int limit, char softHypen,
+                    int &textAttribute, std::stringstream &out, bool breakAll) {
                 
                 int length = text.length();
                 int charCount = 0;
@@ -973,6 +977,32 @@ namespace CommandLine {
                     }
 
                     /*
+                        Check for VT100 escape sequences.
+                        Allow only text attributes: ESC[0m, ESC[1m, etc.
+                        Output them, but don't include them
+                        in the char count.
+                    */
+                    if (c == '\033') {
+                        if (cursor + 3 < length) {
+                            if (text[cursor + 1] == '[' && text[cursor + 3] == 'm'
+                                && text[cursor + 2] >= 48 && text[cursor + 2] <= 56
+                                && text[cursor + 2] != 51 && text[cursor + 2] != 54) {
+                                
+                                int value = text[cursor + 2] - 48;
+
+                                if (!textAttributeWasSetInLastWord) {
+                                    textAttribute = value;
+                                    textAttributeWasSetInLastWord = true;
+                                }
+                                
+                                lastWord << "\033[" << value << 'm';
+                                cursor += 3;
+                                continue;
+                            }
+                        }
+                    }
+
+                    /*
                         Check if we reached the character limit
                         for the line if we include the current
                         character too (+1).
@@ -998,7 +1028,7 @@ namespace CommandLine {
                             didn't fit into the allowed width, then
                             force "break all" behavior.
                         */
-                        if (lastWordPosition == 0) {
+                        if (lastWordPosition == 0 || breakAll) {
                             out << lastWord.str();
                             charCount += lastWordCharCount;
                             return;
@@ -1011,7 +1041,7 @@ namespace CommandLine {
                             if (!beforeLastWordEndedInHyphen) {
                                 /*
                                     Output a dash for the soft hyphen only when
-                                    the word before the last word doesn't start
+                                    the word before the last word doesn't end
                                     with a hyphen.
                                 */
                                 out << '-';
@@ -1041,32 +1071,6 @@ namespace CommandLine {
                         lastWord << c;
                         lastWordCharCount++;
                         continue;
-                    }
-
-                    /*
-                        Check for VT100 escape sequences.
-                        Allow only text attributes: ESC[0m, ESC[1m, etc.
-                        Output them, but don't include them
-                        in the char count.
-                    */
-                    if (c == '\033') {
-                        if (cursor + 3 < length) {
-                            if (text[cursor + 1] == '[' && text[cursor + 3] == 'm'
-                                && text[cursor + 2] >= 48 && text[cursor + 2] <= 56
-                                && text[cursor + 2] != 51 && text[cursor + 2] != 54) {
-                                
-                                int value = text[cursor + 2] - 48;
-
-                                if (!textAttributeWasSetInLastWord) {
-                                    textAttribute = value;
-                                    textAttributeWasSetInLastWord = true;
-                                }
-                                
-                                lastWord << "\033[" << value << 'm';
-                                cursor += 3;
-                                continue;
-                            }
-                        }
                     }
 
                     /*
@@ -1148,7 +1152,10 @@ namespace CommandLine {
              * @param argv Second parameter of the main function.
              */
             Parser(int argc, char *argv[]) : argc(argc), argv(argv), accu(), Argument(accu) {
-                this->screenWidth = 80;
+                struct winsize size;
+                ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+
+                this->screenWidth = std::max(std::min((int)size.ws_col - 1, 80), 10);
             }
 
             /**
@@ -1427,7 +1434,7 @@ namespace CommandLine {
             }
 
             /**
-             * @brief Wrap a text to the maximal width, to be
+             * @brief Wrap a text to the screen width, to be
              * outputted on a terminal.
              * 
              * @param text The text to be formatted.
@@ -1565,7 +1572,7 @@ namespace CommandLine {
                             terminated++;
                         } else {
                             this->FormatLine(texts[column], cursors[column], width[column], softHyphen,
-                                textAttributes[column], buff);
+                                textAttributes[column], buff, breakAll);
                         }
 
                         if (rightPaddings[column] > 0) {

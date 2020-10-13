@@ -27,9 +27,10 @@ int main(int argc, char *argv[]) {
 
         cmd.Argument.String("host", 'h', "127.0.0.1", "host_name", "The host name or IP add|ress "
             "of the \033[1mMonetDB server\033[0m.");
-        cmd.Argument.Int("port", 'p', 50000, "port", "The port of the \033[1mMonetDB server\033[0m."
-            "The de-fault value is 50000.");
-        cmd.Argument.String("user", 'u', "monetdb", "user_name", "User name for the database login.");
+        cmd.Argument.Int("port", 'p', 50000, "port", "The port of the \033[1mMonetDB server\033[0m. "
+            "The de|fault value is 50000.");
+        cmd.Argument.String("user", 'u', "monetdb", "user_name", "User name for the database login. "
+            "The de|fault value is 'monetdb'.");
         cmd.Argument.String("password", 'P', "monetdb", "password", "User password for the database login. "
             "The de|fault value is 'monetdb'.");
         cmd.Operand("database", "The name of the data|base to connect to.");
