@@ -20,6 +20,7 @@
 #include <vector>
 #include <sstream>
 #include <openssl/sha.h>
+#include <openssl/ripemd.h>
 
 
 namespace MonetExplorer {
@@ -60,7 +61,7 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string Sha512(std::string data) {
+            std::string Sha512(std::string &data) {
                 SHA512((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 64, this->bufferHex);
 
@@ -73,7 +74,7 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string Sha256(std::string data) {
+            std::string Sha256(std::string &data) {
                 SHA256((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 32, this->bufferHex);
 
@@ -86,8 +87,47 @@ namespace MonetExplorer {
              * @param data Input
              * @return std::string Output
              */
-            std::string Sha1(std::string data) {
+            std::string Sha1(std::string &data) {
                 SHA1((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
+                this->BinToHex(this->bufferBin, 20, this->bufferHex);
+
+                return std::string(this->bufferHex, 40);
+            }
+
+            /**
+             * @brief SHA384 hash
+             * 
+             * @param data Input
+             * @return std::string Output
+             */
+            std::string Sha384(std::string &data) {
+                SHA384((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
+                this->BinToHex(this->bufferBin, 48, this->bufferHex);
+
+                return std::string(this->bufferHex, 96);
+            }
+
+            /**
+             * @brief SHA224 hash
+             * 
+             * @param data Input
+             * @return std::string Output
+             */
+            std::string Sha224(std::string &data) {
+                SHA224((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
+                this->BinToHex(this->bufferBin, 28, this->bufferHex);
+
+                return std::string(this->bufferHex, 56);
+            }
+
+            /**
+             * @brief RIPEMD160 hash
+             * 
+             * @param data Input
+             * @return std::string Output
+             */
+            std::string RipeMd160(std::string &data) {
+                RIPEMD160((unsigned char*)data.c_str(), data.length(), (unsigned char*)this->bufferBin);
                 this->BinToHex(this->bufferBin, 20, this->bufferHex);
 
                 return std::string(this->bufferHex, 40);
@@ -225,9 +265,32 @@ namespace MonetExplorer {
                 }
                 
                 std::stringstream buff;
-                std::string pwHash = this->Sha1(this->Sha512(password) + this->salt);
-                
-                buff << this->endianness << ':' << user << ':' << "{SHA1}" << pwHash 
+                std::string pwHash = this->Sha512(password) + this->salt;
+
+                if (proto == "SHA1") {
+                    pwHash = this->Sha1(pwHash);
+                }
+                else if (proto == "RIPEMD160") {
+                    pwHash = this->RipeMd160(pwHash);
+                }
+                else if (proto == "SHA512") {
+                    pwHash = this->Sha512(pwHash);
+                }
+                else if (proto == "SHA256") {
+                    pwHash = this->Sha256(pwHash);
+                }
+                else if (proto == "SHA384") {
+                    pwHash = this->Sha384(pwHash);
+                }
+                else if (proto == "SHA224") {
+                    pwHash = this->Sha224(pwHash);
+                }
+                else {
+                    throw std::runtime_error("The protocol '" + proto + "' chosen from the command line "
+                        "is not supported by the client.");
+                }
+
+                buff << this->endianness << ':' << user << ':' << '{' << proto << '}' << pwHash 
                     << ":sql:" << database << ':';
                 
                 if (enableFileTransfer) {
