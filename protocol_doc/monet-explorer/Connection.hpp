@@ -139,17 +139,20 @@ namespace MonetExplorer {
                     return;
                 }
 
-                // Close the outgoing channel
-                shutdown(this->clientSocket, SHUT_WR);
+                if (clientSocket > -1) {
+                    // Close the outgoing channel
+                    shutdown(this->clientSocket, SHUT_WR);
 
-                /*
-                    After the server noticed that the client
-                    closed its outgoing channel, it will also
-                    do so. Read until that is detected.
-                */
-                while(this->ReadExact(BUFFER_SIZE, false) > 0);
-                close(this->clientSocket);
+                    /*
+                        After the server noticed that the client
+                        closed its outgoing channel, it will also
+                        do so. Read until that is detected.
+                    */
+                    while(this->ReadExact(BUFFER_SIZE, false) > 0);
+                    close(this->clientSocket);
+                }
 
+                this->clientSocket = -1;
                 this->connected = false;
             }
 
@@ -193,11 +196,11 @@ namespace MonetExplorer {
              * @brief Connect to the server though Unix
              * domain socket.
              * 
-             * @param port The port of the server is part of the
-             * name of the files which represent these sockets.
-             * Therefore it's required for finding the files.
+             * @param socketFilePath The path to the socket file.
+             * It ends with the port of the server. Typical value
+             * is: "/tmp/.s.monetdb.50000"
              */
-            void ConnectUnix(int port) {
+            void ConnectUnix(std::string socketFilePath) {
                 if (this->connected) {
                     throw std::runtime_error("Connection::ConnectUnix(): Already connected to the server. "
                         "(Method is called twice.)");
@@ -209,29 +212,29 @@ namespace MonetExplorer {
                         + "' (" + std::to_string(errno) + ")");
                 }
 
-                std::vector<std::string> paths ({
-                    "/tmp/.s.monetdb." + std::to_string(port)
-                });
+                struct sockaddr_un serverAddress;
+                bzero(&serverAddress, sizeof(serverAddress));
+                serverAddress.sun_family = AF_UNIX;
+                std::memcpy(serverAddress.sun_path, socketFilePath.c_str(), socketFilePath.length() + 1);
 
-                for(const std::string &path : paths) {
-                    std::cout << "\033[32mTrying: " << path << "\033[0m\n";
-
-                    struct sockaddr_un serverAddress;
-                    bzero(&serverAddress, sizeof(serverAddress));
-                    serverAddress.sun_family = AF_UNIX;
-                    std::memcpy(serverAddress.sun_path, path.c_str(), path.length() + 1);
-
-                    if (connect(this->clientSocket, (sockaddr*)&serverAddress, sizeof(serverAddress)) == 0) {
-                        // See: https://github.com/MonetDB/MonetDB/blob/1f1bbdbd3340fdb74345723e8c98c120dcaf2ead/clients/mapilib/mapi.c#L2416
-                        this->buffer[0] = '0';
-                        this->WriteExact(1);
-                        this->connected = true;
-                        return;
-                    }
+                if (connect(this->clientSocket, (sockaddr*)&serverAddress, sizeof(serverAddress)) == 0) {
+                    this->connected = true;
+                    return;
                 }
 
                 throw std::runtime_error("Failed to connect to the server. Error: '"
                     + std::string(strerror(errno)) + "' (" + std::to_string(errno) + ")");
+            }
+
+            /**
+             * @brief The unix domain socket connection requires
+             * that the client sends a single byte (without packet frame)
+             * first with content 0x30 or '0'.
+             * See: https://github.com/MonetDB/MonetDB/blob/1f1bbdbd3340fdb74345723e8c98c120dcaf2ead/clients/mapilib/mapi.c#L2416
+             */
+            void SendUnixDomainSocketInitByte() {
+                this->buffer[0] = '0';
+                this->WriteExact(1);
             }
 
             /**

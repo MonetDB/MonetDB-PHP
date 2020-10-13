@@ -154,8 +154,8 @@ namespace MonetExplorer {
                 const char *endPos = pos + msg.length() - 1;
                 int field = 0;
 
-                for(; pos < endPos; pos++) {
-                    if (*pos == ':' || pos == endPos - 1 || *pos == '\n' || *pos == ',') {
+                for(; pos <= endPos; pos++) {
+                    if (*pos == ':' || pos == endPos || *pos == '\n' || *pos == ',') {
                         switch (field) {
                             case 0: {
                                 this->salt = std::string(start, pos - start);
@@ -262,6 +262,13 @@ namespace MonetExplorer {
                 if (this->protocols.find(proto) == this->protocols.end()) {
                     throw std::runtime_error("The protocol '" + proto + "' chosen from the command line "
                         "is not supported by the server. (Please check if it's upper-case.)");
+                }
+
+                if (this->passwordHashAlgo != "SHA512") {
+                    throw std::runtime_error("The server offered '" + this->passwordHashAlgo + "' "
+                        "for password hashing. This client supports only SHA512 for password hashing "
+                        "and the following for 'salted hashing': SHA1, SHA256, SHA512, RIPEMD160, "
+                        "SHA224, SHA384.");
                 }
                 
                 std::stringstream buff;

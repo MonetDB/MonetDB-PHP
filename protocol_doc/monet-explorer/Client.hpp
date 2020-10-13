@@ -151,11 +151,13 @@ namespace MonetExplorer {
                     Connect to the server
                 */
                 if (args.IsOptionSet("unix-domain-socket")) {
-                    std::cout << "\033[32mConnecting through Unix domain socket.\033[0m\n";
+                    std::string socketFilePath("/tmp/.s.monetdb." + std::to_string(args.GetIntValue("port")));
+                    std::cout << "\033[32mConnecting through Unix domain socket to " << socketFilePath << ".\033[0m\n";
 
-                    this->connection.ConnectUnix(
-                        args.GetIntValue("port")
-                    );
+                    this->connection.ConnectUnix(socketFilePath);
+
+                    std::cout << "\033[32mSending the init byte 0x30 ('0') to the server.\033[0m\n";
+                    this->connection.SendUnixDomainSocketInitByte();
                 } else {
                     std::cout << "\033[32mConnecting through TCP/IP to: " << args.GetStringValue("host") << ':'
                         << args.GetIntValue("port") << "\033[0m\n";

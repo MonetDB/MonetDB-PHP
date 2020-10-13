@@ -27,7 +27,8 @@ int main(int argc, char *argv[]) {
 
         cmd.Argument.String("host", 'h', "127.0.0.1", "host_name", "The host name or IP add|ress "
             "of the \033[1mMonetDB server\033[0m.");
-        cmd.Argument.Int("port", 'p', 50000, "port", "The port of the \033[1mMonetDB server\033[0m.");
+        cmd.Argument.Int("port", 'p', 50000, "port", "The port of the \033[1mMonetDB server\033[0m."
+            "The de-fault value is 50000.");
         cmd.Argument.String("user", 'u', "monetdb", "user_name", "User name for the database login.");
         cmd.Argument.String("password", 'P', "monetdb", "password", "User password for the database login. "
             "The de|fault value is 'monetdb'.");
@@ -39,9 +40,9 @@ int main(int argc, char *argv[]) {
         cmd.Option("file-transfer", 't', "Enable the file trans|fer pro|to|col for the con|nec|tion.");
         cmd.Argument.String("auth-algo", 'a', "SHA1", "algo", "The hash al|go|rithm to be used "
             "for the 'salted hashing'. The \033[1mMonetDB server\033[0m has to support it. This is "
-            "typi|cally a weaker hash al|go|rithm, which is used to|gether with a "
+            "typi|cally a weaker hash al|go|rithm, which is used to|gether with the "
             "stron|ger 'pass|word hash' that is now SHA512. The cur|rent|ly sup|port|ed values are: "
-            "SHA1, SHA256, SHA512.");
+            "SHA1, SHA256, SHA512, RIPEMD160, SHA224, SHA384. De|fault is SHA1.");
         cmd.Option("help", '?', "Display the usage instructions.");
         cmd.RestrictOperands();
 
