@@ -236,6 +236,13 @@ because this shows an error on the server side.
 
 ## 3.3. Connecting through a Unix domain socket
 
+The socket files are always put into the `/tmp` folder with the following naming
+convention: `/tmp/.s.monetdb.<PORT>`. So even in this case we need to know the port
+of the server, otherwise we would need to try all files with similar names.
+Since the default port is `50000`, the socket file will most likely be:
+`/tmp/.s.monetdb.50000`. The client must either be run under the same user as
+the server, or it needs to have read/write permissions to the socket file.
+
 This case is the same as the TCP/IP connection, with a tiny difference at the very
 beginning. When connecting to a Unix domain socket, then the client has to first
 write a single byte (without any packet frame!) with value 0x30 or the chracter
