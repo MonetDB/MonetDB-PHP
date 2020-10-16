@@ -26,7 +26,7 @@
 namespace MonetExplorer {
     /**
      * @brief Parse a "server challenge" line, which
-     * can be received multiple time from the server
+     * can be received multiple times from the server
      * during authentication.
      */
     class ServerChallenge {

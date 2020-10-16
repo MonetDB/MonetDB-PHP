@@ -17,6 +17,7 @@ for the development of future client applications.
 - [3. Authentication](#3-authentication)
   - [3.1. Possible responses to an authentication request](#31-possible-responses-to-an-authentication-request)
   - [3.2. The Merovingian redirect](#32-the-merovingian-redirect)
+  - [3.3. Connecting through a Unix domain socket](#33-connecting-through-a-unix-domain-socket)
 - [4. Commands and queries in a nutshell](#4-commands-and-queries-in-a-nutshell)
 - [5. Response types](#5-response-types)
   - [5.1. Redirect - **^**](#51-redirect---)
@@ -46,7 +47,8 @@ started by the main.
 
 If the client application is connecting through a UNIX domain socket, then monetdbd
 will try to redirect the connection to mserver5 so that the client then talks directly
-to mserver5 and monetdbd is no longer involved.
+to mserver5 and monetdbd is no longer involved. See the [specific chapter](#33-connecting-through-a-unix-domain-socket)
+for more information.
 
 If the client is connecting through TCP/IP, then by default monetdbd will act
 as a proxy, transferring data packages between the client and the mserver5 processs.
@@ -100,6 +102,11 @@ If the message contains 4321 bytes, then there's a single packet,
 which has the header:
 
     (0x10E1 << 1) | 0x0001 = 0x21C3
+
+Be aware that there are two kinds of bit shifts: the [logical](https://en.wikipedia.org/wiki/Logical_shift)
+and the [arithmetic](https://en.wikipedia.org/wiki/Arithmetic_shift). The arithmetic might
+bring ones in from the left or right instead of zeros, therefore it should be avoided.
+Many languages will do a logical shift on unsigned types, and arithmetic on unsigned.
 
 If the message contains 12345 bytes, then there are two packages. The first
 contains 8190 bytes, while the second the remaining 4155. The `is_last` bit
@@ -226,6 +233,16 @@ the client reads twice.
 
 If the redirect happens more than 10 times, then throw an error in the client application,
 because this shows an error on the server side.
+
+## 3.3. Connecting through a Unix domain socket
+
+This case is the same as the TCP/IP connection, with a tiny difference at the very
+beginning. When connecting to a Unix domain socket, then the client has to first
+write a single byte (without any packet frame!) with value 0x30 or the chracter
+zero '0'.
+
+After that, the server will respond with the `server challenge` and everything is the
+same as in the TCP/IP case.
 
 # 4. Commands and queries in a nutshell
 
