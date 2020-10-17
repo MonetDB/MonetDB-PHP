@@ -106,7 +106,7 @@ which has the header:
 Be aware that there are two kinds of bit shifts: the [logical](https://en.wikipedia.org/wiki/Logical_shift)
 and the [arithmetic](https://en.wikipedia.org/wiki/Arithmetic_shift). The arithmetic might
 bring ones in from the left or right instead of zeros, therefore it should be avoided.
-Many languages will do a logical shift on unsigned types, and arithmetic on unsigned.
+Many languages will do a logical shift on unsigned types, and arithmetic on signed.
 
 If the message contains 12345 bytes, then there are two packages. The first
 contains 8190 bytes, while the second the remaining 4155. The `is_last` bit
