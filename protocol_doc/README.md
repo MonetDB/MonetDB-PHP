@@ -688,7 +688,7 @@ Then the response will be a single message, composed of multiple lines:
 
 The requests can even contain multiple select and multiple prepare
 queries. Then all those results will be concatenated in the
-response, honoring the `export_size` per query.
+response, honoring the `reply_size` per query.
 
 # 7. Prepared statements
 
