@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "tbolner/monetdb-php",
-            "version": "1.1.1",
+            "version": "1.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/MonetDB/MonetDB-PHP.git",
-                "reference": "f5ab838a8741650075d09535238072abb3b6601d"
+                "reference": "3852eefb147d1845587d236144afac85d5d1fb23"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/MonetDB/MonetDB-PHP/zipball/f5ab838a8741650075d09535238072abb3b6601d",
-                "reference": "f5ab838a8741650075d09535238072abb3b6601d",
+                "url": "https://api.github.com/repos/MonetDB/MonetDB-PHP/zipball/3852eefb147d1845587d236144afac85d5d1fb23",
+                "reference": "3852eefb147d1845587d236144afac85d5d1fb23",
                 "shasum": ""
             },
             "require": {
@@ -49,7 +49,7 @@
                 "data-science",
                 "library"
             ],
-            "time": "2020-08-13T20:17:34+00:00"
+            "time": "2020-12-08T19:10:10+00:00"
         }
     ],
     "packages-dev": [],
