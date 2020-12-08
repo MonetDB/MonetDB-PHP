@@ -17,6 +17,7 @@
 
 namespace Example;
 
+use DateTime;
 use MonetDB\Connection;
 
 
@@ -34,7 +35,8 @@ class Application {
                 "weight_kg" decimal(8, 2),
                 "category" text,
                 "birth_date" date,
-                "net_worth_usd" decimal(20, 4)
+                "net_worth_usd" decimal(20, 4),
+                "created" timestamp
             );
         ');
 
@@ -44,28 +46,30 @@ class Application {
 
         /* *** */
 
+        $now = date("Y-m-d H:i:s.u");
+
         $result = $connection->Query(<<<EOF
             start transaction;
 
             insert into
                 "cats"
-                ("name", "weight_kg", "category", "birth_date", "net_worth_usd")
+                ("name", "weight_kg", "category", "birth_date", "net_worth_usd", "created")
             values
-                ('Tiger', 8.2, 'fluffy', '2012-04-23', 2340000),
-                ('Oscar', 3.4, 'spotted', '2014-02-11', 556235.34),
-                ('Coco', 2.52, 'spotted', '2008-12-31', 1470500000),
-                ('Max', 4.23, 'spotted', '2010-01-15', 100),
-                ('Sooty', 7.2, 'shorthair', '2016-10-01', 580000),
-                ('Milo', 5.87, 'spotted', '2015-06-23', 1500.53),
-                ('Muffin', 12.6, 'fluffy', '2013-04-07', 230000),
-                ('Ginger', 9.4, 'shorthair', '2012-06-19', 177240.5),
-                ('Fluffor', 13.12, 'fluffy', '2000-10-07', 5730180200.12),
-                ('Lucy', 3.12, 'shorthair', '2018-06-29', 5780000),
-                ('Chloe', 2.12, 'spotted', '2013-05-01', 13666200),
-                ('Misty', 1.96, 'shorthair', '2014-11-24', 12000000),
-                ('Sam', 3.45, 'fluffy', '2018-12-19', 580.4),
-                ('Gizmo', 4.65, 'fluffy', '2016-05-11', 120300),
-                ('Kimba', 1.23, 'spotted', '2020-01-08', 890000);
+                ('Tiger', 8.2, 'fluffy', '2012-04-23', 2340000, timestamp '{$now}'),
+                ('Oscar', 3.4, 'spotted', '2014-02-11', 556235.34, timestamp '{$now}'),
+                ('Coco', 2.52, 'spotted', '2008-12-31', 1470500000, timestamp '{$now}'),
+                ('Max', 4.23, 'spotted', '2010-01-15', 100, timestamp '{$now}'),
+                ('Sooty', 7.2, 'shorthair', '2016-10-01', 580000, timestamp '{$now}'),
+                ('Milo', 5.87, 'spotted', '2015-06-23', 1500.53, timestamp '{$now}'),
+                ('Muffin', 12.6, 'fluffy', '2013-04-07', 230000, timestamp '{$now}'),
+                ('Ginger', 9.4, 'shorthair', '2012-06-19', 177240.5, timestamp '{$now}'),
+                ('Fluffor', 13.12, 'fluffy', '2000-10-07', 5730180200.12, timestamp '{$now}'),
+                ('Lucy', 3.12, 'shorthair', '2018-06-29', 5780000, timestamp '{$now}'),
+                ('Chloe', 2.12, 'spotted', '2013-05-01', 13666200, timestamp '{$now}'),
+                ('Misty', 1.96, 'shorthair', '2014-11-24', 12000000, timestamp '{$now}'),
+                ('Sam', 3.45, 'fluffy', '2018-12-19', 580.4, timestamp '{$now}'),
+                ('Gizmo', 4.65, 'fluffy', '2016-05-11', 120300, timestamp '{$now}'),
+                ('Kimba', 1.23, 'spotted', '2020-01-08', 890000, timestamp '{$now}');
 
             update
                 "cats"
@@ -93,9 +97,11 @@ EOF
                 round(avg("weight_kg"), 2) as "weight_mean"
             from
                 "cats"
+            where
+                "created" <= ?
             group by
                 "category"
-        ');
+        ', [new DateTime()]);
 
         echo "Columns:\n\n";
 

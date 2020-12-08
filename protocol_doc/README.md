@@ -755,10 +755,19 @@ statement with the specified parameters. Example:
     sEXECUTE 15 ('First\'Value', 'Second\"Value');
 
 Please note that all values passed to the execute statement are type sensitive.
-You cannot pass numbers or true/false values as strings, but they have to be
+You cannot pass `numbers`, `null` or `true`/`false` values as strings, but they have to be
 passed without quotes, example:
 
     sEXECUTE 16 ('2020-08-12', true, false, null, 3.141592653589, 'another string');
+
+While the `date` type is auto-converted from string, this doesn't happen for the `timestamp` type:
+
+    sEXECUTE 17 ('2020-08-12')                  // Date can be passed as string
+    sEXECUTE 18 ('2020-08-12 12:00:00.000000')  // Throws error for timestamp column
+
+If the column has a `timestamp` type, then pass the value with explicit type conversion:
+
+    sEXECUTE 18 (timestamp '2020-08-12 12:00:00.000000')
 
 All string values need to be escaped as discussed in chapter [Escaping](#61-escaping).
 Date values are also passed as strings.

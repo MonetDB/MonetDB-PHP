@@ -163,6 +163,27 @@ $result = $connection->Query('
 ', [ "D'artagnan", 5.3 ]);
 ```
 
+The parameter types for prepared statements have to match
+the column types. See the below example. Never pass `null`,
+`true`, `false` values as strings.
+
+```php
+$result = $connection->Query('
+    update
+        "test"
+    set
+        "nullable_column" = ?
+    where
+        "bool_column" = ?
+        and "numeric_column" > ?
+        and "date_column" > ?
+        and "timestamp_column" < ?
+', [ null, false, 5.3, "2020-12-08", new DateTime()]);
+```
+
+While the `date` values have to be passed as normal strings, the
+`timestamp` type has be passed as a `DateTime` object.
+
 ## Example 4: Using escaping
 
 ```php

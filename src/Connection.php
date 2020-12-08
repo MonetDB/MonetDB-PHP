@@ -17,6 +17,7 @@
 
 namespace MonetDB;
 
+use DateTime;
 use Exception;
 
 /**
@@ -480,7 +481,11 @@ class Connection {
             }
             elseif (is_numeric($param) && !is_string($param)) {
                 $escaped[] = $param + 0;
-            } else {
+            }
+            elseif ($param instanceof DateTime) {
+                $escaped[] = "TIMESTAMP '".$param->format("Y-m-d H:i:s.u")."'";
+            }
+            else {
                 $escaped[] = "'".$this->Escape((string)$param)."'";
             }
         }
