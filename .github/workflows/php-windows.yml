@@ -1,4 +1,4 @@
-name: PHP Composer
+name: PHP Windows Composer
 
 on: [push]
 
@@ -31,8 +31,6 @@ jobs:
       if: steps.composer-cache.outputs.cache-hit != 'true'
       run: composer install --prefer-dist --no-progress --no-suggest
 
-    # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
-    # Docs: https://getcomposer.org/doc/articles/scripts.md
-
-    # - name: Run test suite
-    #   run: composer run-script test
+    - name: Run Unit-Tests
+      run: |
+          /vendor/bin/phpunit tests/
