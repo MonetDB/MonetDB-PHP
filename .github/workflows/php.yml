@@ -51,9 +51,8 @@ jobs:
           sudo -u monetdb monetdb release temp
           sudo -u monetdb monetdb start temp || true
 
+    - name: Run Unit-Tests
+      run: |
+          ./vendor/bin/phpunit tests/
 
-    # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
-    # Docs: https://getcomposer.org/doc/articles/scripts.md
-
-    # - name: Run test suite
-    #   run: composer run-script test
+          
