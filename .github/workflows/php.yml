@@ -1,0 +1,58 @@
+name: PHP Composer
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    env:
+      DBFARM: /var/lib/monetdb
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate
+
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v2
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+
+    - name: Install dependencies
+      if: steps.composer-cache.outputs.cache-hit != 'true'
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Install MonetDB
+      run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y software-properties-common curl make
+          curl https://www.monetdb.org/downloads/MonetDB-GPG-KEY | sudo apt-key add -
+          sudo add-apt-repository 'deb http://dev.monetdb.org/downloads/deb/ focal monetdb'
+          sudo apt-get update -qq
+          sudo apt-get install -y monetdb5-server
+           
+    - name: Run MonetDB            
+      run: |
+          sudo mkdir -p -m 770 ${{ env.DBFARM }}
+          sudo chown -R monetdb.monetdb ${{ env.DBFARM }}
+          sudo -u monetdb monetdbd create ${{ env.DBFARM }}
+          sudo -u monetdb monetdbd set control=yes ${{ env.DBFARM }}
+          sudo -u monetdb monetdbd set passphrase=testdb ${{ env.DBFARM }}
+          sudo -u monetdb monetdbd start ${{ env.DBFARM }} 
+
+    - name: Create database
+      run: |
+          sudo -u monetdb monetdb create temp
+          sudo -u monetdb monetdb release temp
+          sudo -u monetdb monetdb start temp || true
+
+    - name: Run Unit-Tests
+      run: |
+          ./vendor/bin/phpunit tests/
+
+          
