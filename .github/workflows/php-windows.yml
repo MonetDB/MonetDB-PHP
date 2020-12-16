@@ -1,18 +1,19 @@
 name: PHP Composer
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push]
 
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: windows-2019
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: Install Composer
+      run: |
+        choco install composer 
+        composer update
 
     - name: Validate composer.json and composer.lock
       run: composer validate
