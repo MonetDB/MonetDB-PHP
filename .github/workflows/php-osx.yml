@@ -1,0 +1,29 @@
+name: OS X 
+on: [push]
+jobs:
+  osx_wheel:
+    runs-on: macos-10.15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Composer
+        run: |
+          curl -sS https://getcomposer.org/installer | php
+          sudo mv composer.phar /usr/local/bin/
+
+      - name: Validate composer.json and composer.lock
+        run: php /usr/local/bin/composer.phar validate
+
+
+      - name: Install monetdb
+        run: brew install monetdb
+      - name: Start MonetDB
+        run: |
+          monetdbd create /usr/local/var/lib/monetdb
+          monetdbd set control=yes /usr/local/var/lib/monetdb/
+          monetdbd set passphrase=testdb /usr/local/var/lib/monetdb
+          monetdbd start /usr/local/var/lib/monetdb
+          monetdb create temp
+          monetdb release temp
+          monetdb start temp
