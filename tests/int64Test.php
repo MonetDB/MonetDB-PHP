@@ -5,15 +5,19 @@ use MonetDB\Connection;
 require_once(__DIR__. '../../src/include.php');
 
 final class int64Test extends TestCase {
+    /**
+     * @var Connection
+     */
     public $conn;
 
     public function setUp(): void
     {
-        $this->conn = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "temp");
+        $this->conn = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
     }
 
     public function testBigIntTable(): void 
     {
+        $this->conn->Query("drop table if exists php_int64_dec18");
         $res = $this->conn->Query("CREATE TABLE php_int64_dec18 (i BIGINT, d0 DECIMAL(18,0), d9 DECIMAL(18,9));");
 
         $this->assertCount(0, $res);
@@ -28,13 +32,10 @@ final class int64Test extends TestCase {
 
     public function testSelectBigInt(): void 
     {
-        $res = $this->conn->Query("SELECT * FROM php_int64_dec18;");
-        $res_arr = iterator_to_array($res);
+        $res = $this->conn->QueryFirst("SELECT * FROM php_int64_dec18;");
 
-        $this->assertEquals($res_arr[1]["i"], "1234567890987654321");
-        $this->assertEquals($res_arr[1]["d0"], "123456789987654321");
-        $this->assertEquals($res_arr[1]["d9"], "123456789.987654321");
+        $this->assertEquals($res["i"], "1234567890987654321");
+        $this->assertEquals($res["d0"], "123456789987654321");
+        $this->assertEquals($res["d9"], "123456789.987654321");
     }
-
 }
-?>

@@ -25,6 +25,7 @@ final class int128Test extends TestCase {
 
     public function testBigIntTable(): void 
     {
+        $this->conn->Query("drop table if exists php_int128");
         $res = $this->conn->Query("CREATE TABLE php_int128 (i HUGEINT);");
 
         $this->assertCount(0, $res);

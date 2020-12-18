@@ -17,6 +17,7 @@ final class dec38Test extends TestCase {
 
     public function testBigIntTable(): void 
     {
+        $this->conn->Query("drop table if exists php_dec38");
         $res = $this->conn->Query("CREATE TABLE php_dec38 (d38_0 DECIMAL(38,0), d38_19 DECIMAL(38,19), d38_38 DECIMAL(38,38));");
 
         $this->assertCount(0, $res);
