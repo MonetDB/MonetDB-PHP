@@ -1,45 +1,51 @@
-# name: Windows 
+name: Windows
 
-# on: [push]
+on: [push]
 
-# jobs:
-#   build:
+jobs:
+  build:
 
-#     runs-on: windows-2019
+    runs-on: windows-2019
 
-#     steps:
-#     - uses: actions/checkout@v2
+    steps:
+    - uses: actions/checkout@v2
 
-#     - name: Install Composer
-#       run: |
-#         choco install composer 
-#         composer update
+    - name: Install Composer
+      run: |
+        choco install composer 
+        composer update
 
-#     - name: Install PHPUnit
-#       run: |
-#           composer require --dev --update-with-dependencies phpunit/phpunit ^9
+    - name: Install PHPUnit
+      run: |
+          composer require --dev --update-with-dependencies phpunit/phpunit ^9
 
-#     - name: Install MonetDB
-#       run: | 
-#           curl https://www.monetdb.org/downloads/Windows/Oct2020-SP1/MonetDB-ODBC-Installer-i386-20201118.msi
-#           msiexec /s MonetDB-ODBC-Installer-i386-20201118.msi
+    - name: Install MonetDB
+      run: | 
+          curl https://www.monetdb.org/downloads/Windows/Nov2019/MonetDB5-SQL-Installer-x86_64-20191125.msi
+          msiexec /s MonetDB-ODBC-Installer-i386-20201118.msi /qn
 
-#     - name: Validate composer.json and composer.lock
-#       run: composer validate
+    - name: Validate composer.json and composer.lock
+      run: composer validate
 
-#     - name: Cache Composer packages
-#       id: composer-cache
-#       uses: actions/cache@v2
-#       with:
-#         path: vendor
-#         key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-#         restore-keys: |
-#           ${{ runner.os }}-php-
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v2
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
 
-#     - name: Install dependencies
-#       if: steps.composer-cache.outputs.cache-hit != 'true'
-#       run: composer install --prefer-dist --no-progress --no-suggest
+    - name: Install dependencies
+      if: steps.composer-cache.outputs.cache-hit != 'true'
+      run: composer install --prefer-dist --no-progress --no-suggest
 
-#     - name: Run Unit-Tests
-#       run: |
-#           ./vendor/bin/phpunit tests/
+    - name: Setup Database
+      run: |
+          cd C:\"Program Files"\MonetDB\MonetDB5\bin
+          mserver5.exe --dbpath=temp
+
+
+    - name: Run Unit-Tests
+      run: |
+          ./vendor/bin/phpunit tests/
