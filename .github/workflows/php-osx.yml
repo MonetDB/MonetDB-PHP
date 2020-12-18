@@ -26,9 +26,9 @@ jobs:
             monetdbd set control=yes /usr/local/var/lib/monetdb/
             monetdbd set passphrase=testdb /usr/local/var/lib/monetdb
             monetdbd start /usr/local/var/lib/monetdb
-            monetdb create temp
-            monetdb release temp
-            monetdb start temp
+            monetdb create myDatabase
+            monetdb release myDatabase
+            monetdb start myDatabase
 
         - name: Run Unit-Tests
           run: |
