@@ -5,11 +5,14 @@ use MonetDB\Connection;
 require_once(__DIR__. '../../src/include.php');
 
 final class dec38Test extends TestCase {
+    /**
+     * @var Connection
+     */
     public $conn;
 
     public function setUp(): void
     {
-        $this->conn = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "temp");
+        $this->conn = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
     }
 
     public function testBigIntTable(): void 
@@ -28,13 +31,11 @@ final class dec38Test extends TestCase {
 
     public function testSelectBigInt(): void 
     {
-        $res = $this->conn->Query("SELECT * FROM php_dec38");
-        $res_arr = iterator_to_array($res);
+        $res = $this->conn->QueryFirst("SELECT * FROM php_dec38");
 
-        $this->assertEquals($res_arr[1]["d38_0"], "12345678901234567899876543210987654321");
-        $this->assertEquals($res_arr[1]["d38_19"], "1234567890123456789.9876543210987654321");
-        $this->assertEquals($res_arr[1]["d38_38"], "0.12345678901234567899876543210987654321");
+        $this->assertEquals($res["d38_0"], "12345678901234567899876543210987654321");
+        $this->assertEquals($res["d38_19"], "1234567890123456789.9876543210987654321");
+        $this->assertEquals($res["d38_38"], "0.12345678901234567899876543210987654321");
     }
 
 }
-?>

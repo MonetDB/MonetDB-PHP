@@ -47,9 +47,9 @@ jobs:
 
     - name: Create database
       run: |
-          sudo -u monetdb monetdb create temp
-          sudo -u monetdb monetdb release temp
-          sudo -u monetdb monetdb start temp || true
+          sudo -u monetdb monetdb create myDatabase
+          sudo -u monetdb monetdb release myDatabase
+          sudo -u monetdb monetdb start myDatabase || true
 
     - name: Run Unit-Tests
       run: |
