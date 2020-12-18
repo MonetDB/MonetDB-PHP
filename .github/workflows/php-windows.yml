@@ -1,0 +1,45 @@
+# name: Windows 
+
+# on: [push]
+
+# jobs:
+#   build:
+
+#     runs-on: windows-2019
+
+#     steps:
+#     - uses: actions/checkout@v2
+
+#     - name: Install Composer
+#       run: |
+#         choco install composer 
+#         composer update
+
+#     - name: Install PHPUnit
+#       run: |
+#           composer require --dev --update-with-dependencies phpunit/phpunit ^9
+
+#     - name: Install MonetDB
+#       run: | 
+#           curl https://www.monetdb.org/downloads/Windows/Oct2020-SP1/MonetDB-ODBC-Installer-i386-20201118.msi
+#           msiexec /s MonetDB-ODBC-Installer-i386-20201118.msi
+
+#     - name: Validate composer.json and composer.lock
+#       run: composer validate
+
+#     - name: Cache Composer packages
+#       id: composer-cache
+#       uses: actions/cache@v2
+#       with:
+#         path: vendor
+#         key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+#         restore-keys: |
+#           ${{ runner.os }}-php-
+
+#     - name: Install dependencies
+#       if: steps.composer-cache.outputs.cache-hit != 'true'
+#       run: composer install --prefer-dist --no-progress --no-suggest
+
+#     - name: Run Unit-Tests
+#       run: |
+#           ./vendor/bin/phpunit tests/
