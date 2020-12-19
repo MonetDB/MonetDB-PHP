@@ -456,20 +456,42 @@ class Connection {
      * @param array $params
      */
     private function WritePreparedStatement(string $sql, array $params) {
-        $queryHash = hash('sha256', $sql);
+        $params = array_values($params);
 
-        if (!isset($this->preparedStatements[$queryHash])) {
+        if (!isset($this->preparedStatements[$sql])) {
             $this->Write("sPREPARE ".rtrim($sql, "\r\n\t ;")."\n;");
             $response = $this->inputStream->ReceiveResponse();
             $stats = $response->GetStatusRecords()[0];
-            $this->preparedStatements[$queryHash] = $stats->GetPreparedStatementID();
+            $paramTypes = [];
+
+            foreach($response as $row) {
+                if ($row['column'] === null) {
+                    $paramTypes[] = $row['type'];
+                }
+            }
+
+            if (count($paramTypes) < 1) {
+                throw new MonetException("The SQL statement has no placeholders (like '?') for parameters.");
+            }
+
+            $this->preparedStatements[$sql] = [
+                $stats->GetPreparedStatementID(),
+                $paramTypes
+            ];
 
             $response->Discard();
         }
 
-        $id = $this->preparedStatements[$queryHash];
+        list($id, $paramTypes) = $this->preparedStatements[$sql];
+
+        if (count($params) != count($paramTypes)) {
+            throw new MonetException("The number of placeholders in the SQL statement is not the same as the number of passed parameters.");
+        }
+
         $escaped = [];
-        foreach($params as $param) {
+        foreach($params as $index => $param) {
+            $type = $paramTypes[$index];
+
             if ($param === null) {
                 $escaped[] = "NULL";
             }
@@ -479,14 +501,29 @@ class Connection {
             else if ($param === false) {
                 $escaped[] = "false";
             }
+            elseif (is_string($param)) {
+                if ($type == "hugeint" || $type == "decimal") {
+                    $escaped[] = preg_replace('/[^0-9\.]/', '', $param);
+                }
+                else if ($type == "timestamp") {
+                    $escaped[] = "TIMESTAMP '".preg_replace('/[^0-9\.\-\: ]/', '', $param)."'";
+                }
+                else {
+                    $escaped[] = @"'".$this->Escape((string)$param)."'";
+                }
+            }
             elseif (is_numeric($param) && !is_string($param)) {
                 $escaped[] = $param + 0;
             }
             elseif ($param instanceof DateTime) {
-                $escaped[] = "TIMESTAMP '".$param->format("Y-m-d H:i:s.u")."'";
+                if ($type == "date") {
+                    $escaped[] = "'".$param->format("Y-m-d")."'";
+                } else {
+                    $escaped[] = "TIMESTAMP '".$param->format("Y-m-d H:i:s.u")."'";
+                }
             }
             else {
-                $escaped[] = "'".$this->Escape((string)$param)."'";
+                $escaped[] = @"'".$this->Escape((string)$param)."'";
             }
         }
 
