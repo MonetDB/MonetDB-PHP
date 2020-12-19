@@ -46,10 +46,12 @@ final class preparedTest extends TestCase {
 
     public function testInt32(): void {
         $this->InsertValuePrepared('i', 123456, '123456');
+        $this->InsertValuePrepared('i', '123456', '123456');
     }
 
     public function testInt64(): void {
         $this->InsertValuePrepared('b', 1234567890987654321, '1234567890987654321');
+        $this->InsertValuePrepared('b', '1234567890987654321', '1234567890987654321');
     }
 
     public function testTimestamp(): void {
@@ -68,5 +70,21 @@ final class preparedTest extends TestCase {
 
         $ts = new DateTime();
         $this->InsertValuePrepared('dat', $ts, $ts->format('Y-m-d'));
+    }
+
+    public function testDouble(): void {
+        $this->InsertValuePrepared('f', 3.14159265, '3.14159265');
+        $this->InsertValuePrepared('f', '3.14159265', '3.14159265');
+
+        $this->InsertValuePrepared('dbl', 3.14159265, '3.14159265');
+        $this->InsertValuePrepared('dbl', '3.14159265', '3.14159265');
+
+        $this->InsertValuePrepared('dbl2', 3.14159265, '3.14159265');
+        $this->InsertValuePrepared('dbl2', '3.14159265', '3.14159265');
+    }
+
+    public function testReal(): void {
+        $this->InsertValuePrepared('r', 3.141592, '3.141592');
+        $this->InsertValuePrepared('r', '3.141592', '3.141592');
     }
 }

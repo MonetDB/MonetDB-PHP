@@ -506,14 +506,23 @@ class Connection {
                     $escaped[] = preg_replace('/[^0-9\.]/', '', $param);
                 }
                 else if ($type == "timestamp") {
-                    $escaped[] = "TIMESTAMP '".preg_replace('/[^0-9\.\-\: ]/', '', $param)."'";
+                    $escaped[] = "TIMESTAMP '".$this->Escape($param)."'";
                 }
+                else if ($type == "int" || $type == "bigint") {
+                    $escaped[] = (string)((int)$param);
+                }
+                else if ($type == "double" || $type == "real") {
+                    $escaped[] = (string)((float)$param);
+                }
+
+                // TODO: TIME, INTERVAL, boolean, binary ?
+
                 else {
-                    $escaped[] = @"'".$this->Escape((string)$param)."'";
+                    $escaped[] = "'".$this->Escape($param)."'";
                 }
             }
-            elseif (is_numeric($param) && !is_string($param)) {
-                $escaped[] = $param + 0;
+            elseif (is_float($param) || is_integer($param)) {
+                $escaped[] = (string)$param;
             }
             elseif ($param instanceof DateTime) {
                 if ($type == "date") {
@@ -523,11 +532,17 @@ class Connection {
                 }
             }
             else {
-                $escaped[] = @"'".$this->Escape((string)$param)."'";
+                $gotType = gettype($param);
+                if ($gotType == "object") {
+                    $gotType = get_class($param);
+                }
+
+                throw new MonetException("Parameter ".($index + 1)." has invalid PHP type: '{$gotType}'. "
+                    ."(Expected SQL type: '{$type}'.)");
             }
         }
 
-        $this->Write("sEXECUTE {$id}(".implode(",", $escaped).");");
+        $this->Write("sEXECUTE {$id}(".implode(", ", $escaped).");");
     }
 
     /**

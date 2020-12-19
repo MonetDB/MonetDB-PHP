@@ -9,7 +9,7 @@
             "compilerPath": "/usr/bin/g++",
             "cStandard": "gnu11",
             "cppStandard": "gnu++11",
-            "intelliSenseMode": "clang-x64",
+            "intelliSenseMode": "gcc-x64",
             "compilerArgs": [
                 "-lssl"
             ]
