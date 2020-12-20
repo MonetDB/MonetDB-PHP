@@ -509,7 +509,7 @@ Discussed in chapter [Data response](#521-data-response---1).
 Error responses start with an exclamation mark `!`, followed by an error code, then a text
 message after a second exclamation mark. When the server returns an error message,
 then it clears the complete session state (forgets everything, including prepared
-statements and active queries).
+statements and active queries) and closes the connection.
 
 Examples:
 

@@ -123,6 +123,9 @@ foreach($result as $record) {
 }
 ```
 
+The returned values are always in string representation except the null, which
+is always returned as `null`.
+
 ## Example 2: Get execution stats
 
 ```php
@@ -163,26 +166,20 @@ $result = $connection->Query('
 ', [ "D'artagnan", 5.3 ]);
 ```
 
-The parameter types for prepared statements have to match
-the column types. See the below example. Never pass `null`,
-`true`, `false` values as strings.
+In MonetDB the placeholders of prepared statements have specific types.
+This library auto-converts some of PHP types to the corresponding MonetDB types.
 
-```php
-$result = $connection->Query('
-    update
-        "test"
-    set
-        "nullable_column" = ?
-    where
-        "bool_column" = ?
-        and "numeric_column" > ?
-        and "date_column" > ?
-        and "timestamp_column" < ?
-', [ null, false, 5.3, "2020-12-08", new DateTime()]);
-```
+| MonetDB type | Accepted PHP types | Value examples |
+| --- | --- | --- |
+| timestamp | `string`, `DateTime` | `"2020-12-20 11:14:26.123456"` |
+| date | `string`, `DateTime` | `"2020-12-20"` |
+| boolean | `boolean`, `string`, `integer` | `true`, `false`, `"true"`, `0`, `"0"`, `1`, `"t"`, `"f"`, `"yes"`, `"no"`, `"enabled"`, `"disabled"` |
+| Numeric values | `integer`, `float`, `string` | `12.34`, `"12.34"` (use string for huge numbers) |
+| Character types | `string` | `"Hello World!"` |
+| Binary | `string` | `"0f44ba12"` (always interpreted as hexadecimal) |
+| time | `string`, `DateTime` | `"11:28"`, `"12:28:34"` |
 
-While the `date` values have to be passed as normal strings, the
-`timestamp` type has be passed as a `DateTime` object.
+Always pass the null values as `null`, and not as a string.
 
 ## Example 4: Using escaping
 
