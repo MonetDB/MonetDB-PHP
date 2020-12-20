@@ -10,18 +10,18 @@ final class sizeLimitBugTest extends TestCase {
     /**
      * @var Connection
      */
-    public $conn;
+    public static $conn;
 
-    public function setUp(): void
+    public static function setUpBeforeClass(): void
     {
-        $this->conn = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
+        self::$conn = new Connection("127.0.0.1", 50000, "monetdb", "monetdb", "myDatabase");
     }
 
     public function testWeCanConnectToDatabase(): void 
     {
         $this->assertInstanceOf(
             Connection::class,
-            $this->conn
+            self::$conn
         );
     }
 
@@ -30,7 +30,7 @@ final class sizeLimitBugTest extends TestCase {
         $sql = 'select 1';
         $sql = str_pad($sql, $this->packet_size , ' ');
 
-        $res = $this->conn->Query($sql);
+        $res = self::$conn->Query($sql);
         $this->assertCount(1, $res);
     }
 }

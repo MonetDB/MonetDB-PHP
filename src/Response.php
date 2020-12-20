@@ -17,8 +17,6 @@
 
 namespace MonetDB;
 
-use Exception;
-
 /**
  * This class represents a response for an SQL query
  * or for a command.
@@ -224,7 +222,7 @@ class Response implements \Iterator {
                 return;
             }
             else if ($first == InputStream::MSG_QUERY) {
-                if ($second == InputStream::Q_TABLE) {
+                if ($second == InputStream::Q_TABLE || $second == InputStream::Q_PREPARE) {
                     $status = new StatusRecord($second, $this->currentLine);
                     $this->statusRecords[] = $status;
                     $this->ignoreTuples = false;
@@ -298,14 +296,7 @@ class Response implements \Iterator {
 
                     continue;
                 }
-                else if ($second == InputStream::Q_PREPARE) {
-                    /*
-                        It returns some meaningless dataset when created. Skip that.
-                    */
-                    $this->statusRecords[] = new StatusRecord($second, $this->currentLine);
-                    $this->Discard();
-                    return;
-                } else {
+                else {
                     $this->statusRecords[] = new StatusRecord($second, $this->currentLine);
                     continue;
                 }

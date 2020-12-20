@@ -325,9 +325,9 @@ class Connection {
      * @param string $sql
      * @param array|null $params An optional array for prepared statement parameters.
      * If not provided (or null), then a normal query is executed instead of
-     * a prepared statement. The parameter values will retain their PHP type if
-     * possible. The following values won't be converted to string: null, true, false
-     * and numeric values.
+     * a prepared statement. The parameter values will be converted to the proper
+     * MonetDB type when possible. See the relevant section of README.md about
+     * parameterized queries for more details.
      * @return Response
      */
     public function Query(string $sql, array $params = null): Response
@@ -456,20 +456,42 @@ class Connection {
      * @param array $params
      */
     private function WritePreparedStatement(string $sql, array $params) {
-        $queryHash = hash('sha256', $sql);
+        $params = array_values($params);
 
-        if (!isset($this->preparedStatements[$queryHash])) {
+        if (!isset($this->preparedStatements[$sql])) {
             $this->Write("sPREPARE ".rtrim($sql, "\r\n\t ;")."\n;");
             $response = $this->inputStream->ReceiveResponse();
             $stats = $response->GetStatusRecords()[0];
-            $this->preparedStatements[$queryHash] = $stats->GetPreparedStatementID();
+            $paramTypes = [];
+
+            foreach($response as $row) {
+                if ($row['column'] === null) {
+                    $paramTypes[] = $row['type'];
+                }
+            }
+
+            if (count($paramTypes) < 1) {
+                throw new MonetException("The SQL statement has no placeholders (like '?') for parameters.");
+            }
+
+            $this->preparedStatements[$sql] = [
+                $stats->GetPreparedStatementID(),
+                $paramTypes
+            ];
 
             $response->Discard();
         }
 
-        $id = $this->preparedStatements[$queryHash];
+        list($id, $paramTypes) = $this->preparedStatements[$sql];
+
+        if (count($params) != count($paramTypes)) {
+            throw new MonetException("The number of placeholders in the SQL statement is not the same as the number of passed parameters.");
+        }
+
         $escaped = [];
-        foreach($params as $param) {
+        foreach($params as $index => $param) {
+            $type = $paramTypes[$index];
+
             if ($param === null) {
                 $escaped[] = "NULL";
             }
@@ -479,18 +501,75 @@ class Connection {
             else if ($param === false) {
                 $escaped[] = "false";
             }
-            elseif (is_numeric($param) && !is_string($param)) {
-                $escaped[] = $param + 0;
+            elseif (is_string($param)) {
+                if (in_array($type, ['char', 'varchar', 'clob'])) {
+                    $escaped[] = "'".$this->Escape($param)."'";
+                }
+                else if ($type == "hugeint" || $type == "decimal") {
+                    $escaped[] = preg_replace('/[^0-9\.\+\-ex]/i', '', $param);
+                }
+                else if ($type == "timestamp") {
+                    $escaped[] = "TIMESTAMP '".$this->Escape($param)."'";
+                }
+                else if ($type == "int" || $type == "bigint") {
+                    $escaped[] = (string)((int)$param);
+                }
+                else if ($type == "double" || $type == "real") {
+                    $escaped[] = (string)((float)$param);
+                }
+                else if ($type == "blob") {
+                    $escaped[] = "x'".preg_replace('/[^0-9a-f]/i', '', $param)."'";
+                }
+                else if ($type == "boolean") {
+                    $lower = strtolower($param);
+                    if (in_array($lower, ['1', 'true', 'yes', 't', 'enabled'])) {
+                        $escaped[] = "true";
+                    } else if (in_array($lower, ['0', 'false', 'no', 'f', 'disabled'])) {
+                        $escaped[] = "false";
+                    } else {
+                        throw new MonetException("Invalid value passed for parameter '".($index + 1).
+                            "': Expected boolean, received: {$param}");
+                    }
+                }
+                else if ($type == "time") {
+                    $escaped[] = "time '".preg_replace('/[^0-9\:]/i', '', $param)."'";
+                }
+                else {
+                    $escaped[] = "'".$this->Escape($param)."'";
+                }
+            }
+            elseif (is_float($param) || is_integer($param)) {
+                if ($type == "boolean") {
+                    if ($param == 0) {
+                        $escaped[] = "false";
+                    } else {
+                        $escaped[] = "true";
+                    }
+                } else {
+                    $escaped[] = (string)$param;
+                }
             }
             elseif ($param instanceof DateTime) {
-                $escaped[] = "TIMESTAMP '".$param->format("Y-m-d H:i:s.u")."'";
+                if ($type == "date") {
+                    $escaped[] = "'".$param->format("Y-m-d")."'";
+                } else if ($type == "timestamp") {
+                    $escaped[] = "TIMESTAMP '".$param->format("Y-m-d H:i:s.u")."'";
+                } else if ($type == "time") {
+                    $escaped[] = "time '".$param->format("H:i:s")."'";
+                }
             }
             else {
-                $escaped[] = "'".$this->Escape((string)$param)."'";
+                $gotType = gettype($param);
+                if ($gotType == "object") {
+                    $gotType = get_class($param);
+                }
+
+                throw new MonetException("Parameter ".($index + 1)." has invalid PHP type: '{$gotType}'. "
+                    ."(Expected SQL type: '{$type}'.)");
             }
         }
 
-        $this->Write("sEXECUTE {$id}(".implode(",", $escaped).");");
+        $this->Write("sEXECUTE {$id}(".implode(", ", $escaped).");");
     }
 
     /**

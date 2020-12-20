@@ -123,6 +123,9 @@ foreach($result as $record) {
 }
 ```
 
+The returned values are always in string representation except the null, which
+is always returned as `null`.
+
 ## Example 2: Get execution stats
 
 ```php
@@ -163,26 +166,20 @@ $result = $connection->Query('
 ', [ "D'artagnan", 5.3 ]);
 ```
 
-The parameter types for prepared statements have to match
-the column types. See the below example. Never pass `null`,
-`true`, `false` values as strings.
+In MonetDB the placeholders of prepared statements have specific types.
+This library auto-converts some of PHP types to the corresponding MonetDB types.
 
-```php
-$result = $connection->Query('
-    update
-        "test"
-    set
-        "nullable_column" = ?
-    where
-        "bool_column" = ?
-        and "numeric_column" > ?
-        and "date_column" > ?
-        and "timestamp_column" < ?
-', [ null, false, 5.3, "2020-12-08", new DateTime()]);
-```
+| MonetDB type | Accepted PHP types | Value examples |
+| --- | --- | --- |
+| timestamp | `string`, `DateTime` | `"2020-12-20 11:14:26.123456"` |
+| date | `string`, `DateTime` | `"2020-12-20"` |
+| boolean | `boolean`, `string`, `integer` | `true`, `false`, `"true"`, `0`, `"0"`, `1`, `"t"`, `"f"`, `"yes"`, `"no"`, `"enabled"`, `"disabled"` |
+| Numeric values | `integer`, `float`, `string` | `12.34`, `"12.34"` (use string for huge numbers) |
+| Character types | `string` | `"Hello World!"` |
+| Binary | `string` | `"0f44ba12"` (always interpreted as hexadecimal) |
+| time | `string`, `DateTime` | `"11:28"`, `"12:28:34"` |
 
-While the `date` values have to be passed as normal strings, the
-`timestamp` type has be passed as a `DateTime` object.
+Always pass the null values as `null`, and not as a string.
 
 ## Example 4: Using escaping
 
@@ -351,7 +348,7 @@ $result3 = $connection3->Query("...");
 | --- | --- |
 | <strong>__construct</strong> | Create a new connection to a MonetDB database. <br><br><strong>@param</strong> <em>string</em> <strong>$host</strong> : The host of the database. Use '127.0.0.1' if the DB is on the same machine.<br><strong>@param</strong> <em>int</em> <strong>$port</strong> : The port of the database. For MonetDB this is usually 50000.<br><strong>@param</strong> <em>string</em> <strong>$user</strong> : The user name.<br><strong>@param</strong> <em>string</em> <strong>$password</strong> : The password of the user.<br><strong>@param</strong> <em>string</em> <strong>$database</strong> : The name of the database to connect to. Don't forget to release and start it.<br><strong>@param</strong> <em>string</em> <strong>$saltedHashAlgo</strong> <em>= "SHA1"</em> : Optional. The preferred hash algorithm to be used for exchanging the password. It has to be supported by both the server and PHP. This is only used for the salted hashing. Another stronger algorithm is used first (usually SHA512).<br><strong>@param</strong> <em>bool</em> <strong>$syncTimeZone</strong> <em>= true</em> : If true, then tells the clients time zone offset to the server, which will convert all timestamps is case there's a difference. If false, then the timestamps will end up on the server unmodified.<br><strong>@param</strong> <em>int</em> <strong>$maxReplySize</strong> <em>= 200</em> : The maximal number of tuples returned in a response. A higher value results in smaller number of memory allocations and string operations, but also in higher memory footprint. |
 | <strong>Close</strong> | Close the connection |
-| <strong>Query</strong> | Execute an SQL query and return its response. For 'select' queries the response can be iterated using a 'foreach' statement. You can pass an array as second parameter to execute the query as prepared statement, where the array contains the parameter values. SECURITY WARNING: For prepared statements in MonetDB, the parameter values are passed in a regular 'EXECUTE' command, using escaping. Therefore the same security considerations apply here as for using the Connection->Escape(...) method. Please read the comments for that method. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared statement parameters. If not provided (or null), then a normal query is executed instead of a prepared statement. The parameter values will retain their PHP type if possible. The following values won't be converted to string: null, true, false and numeric values.<br><strong>@return</strong> <em>Response</em> |
+| <strong>Query</strong> | Execute an SQL query and return its response. For 'select' queries the response can be iterated using a 'foreach' statement. You can pass an array as second parameter to execute the query as prepared statement, where the array contains the parameter values. SECURITY WARNING: For prepared statements in MonetDB, the parameter values are passed in a regular 'EXECUTE' command, using escaping. Therefore the same security considerations apply here as for using the Connection->Escape(...) method. Please read the comments for that method. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared statement parameters. If not provided (or null), then a normal query is executed instead of a prepared statement. The parameter values will be converted to the proper MonetDB type when possible. See the relevant section of README.md about parameterized queries for more details.<br><strong>@return</strong> <em>Response</em> |
 | <strong>QueryFirst</strong> | Execute an SQL query and return only the first row as an associative array. If there is more data on the stream, then discard all. Returns null if the query has empty result. You can pass an array as second parameter to execute the query as prepared statement, where the array contains the parameter values. <br><br><strong>@param</strong> <em>string</em> <strong>$sql</strong><br><strong>@param</strong> <em>array</em> <strong>$params</strong> <em>= null</em> : An optional array for prepared statement parameters. If not provided (or null), then a normal query is executed instead of a prepared statement. See the 'Query' method for more information about the parameter values.<br><strong>@return</strong> <em>string[] -or- null</em> |
 | <strong>Command</strong> | Send a 'command' to MonetDB. Commands are used for configuring the database, for example setting the maximal response size, or for requesting unread parts of a query response ('export').<br><br><strong>@param</strong> <em>string</em> <strong>$command</strong><br><strong>@param</strong> <em>bool</em> <strong>$noResponse</strong> <em>= true</em> : If true, then returns NULL and makes no read to the underlying socket.<br><strong>@return</strong> <em>Response -or- null</em> |
 | <strong>Escape</strong> | Escape a string value, to be inserted into a query, inside single quotes. The following characters are escaped by this method: backslash, single quote, carriage return, line feed, tabulator, null character, CTRL+Z. As a security measure this library forces the use of multi-byte support and UTF-8 encoding, which is also used by MonetDB, avoiding the SQL-injection attacks, which play with differences between character encodings. <br><br><strong>@param</strong> <em>string</em> <strong>$value</strong><br><strong>@return</strong> <em>string</em> |
