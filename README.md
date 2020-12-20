@@ -167,7 +167,7 @@ $result = $connection->Query('
 ```
 
 In MonetDB the placeholders of prepared statements have specific types.
-This library auto-converts some of PHP types to the corresponding MonetDB types.
+This library auto-converts some of the PHP types to the corresponding MonetDB types.
 
 | MonetDB type | Accepted PHP types | Value examples |
 | --- | --- | --- |
