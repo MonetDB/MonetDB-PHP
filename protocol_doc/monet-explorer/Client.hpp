@@ -66,6 +66,7 @@ namespace MonetExplorer {
                         }
 
                         output << c;
+                        mb_remain--;
                         continue;
                     }
 

@@ -264,6 +264,7 @@ namespace CommandLine {
          */
         class ArgumentAccumulator {
             public:
+                bool empty;
                 bool restrictOperands;
                 std::string executableName;
                 std::map<std::string, CommandLineArg> argsByName;
@@ -283,7 +284,7 @@ namespace CommandLine {
                 /**
                  * @brief Construct a new Argument Accumulator object
                  */
-                ArgumentAccumulator() : restrictOperands(false), executableName(), argsByName(), argsByLetter(),
+                ArgumentAccumulator() : empty(true), restrictOperands(false), executableName(), argsByName(), argsByLetter(),
                     operands(), stringValues(), intValues(), doubleValues(), optionNames(), operandValues(),
                     stringValuesList(), intValuesList(), doubleValuesList() { }
 
@@ -561,6 +562,16 @@ namespace CommandLine {
              */
             bool IsArgumentExist(std::string name) {
                 return this->accu.argsByName.find(name) != this->accu.argsByName.end();
+            }
+
+            /**
+             * @brief Returns true if no arguments were passed
+             * on the command line, false otherwise.
+             * 
+             * @return bool
+             */
+            bool IsEmpty() {
+                return this->accu.empty;
             }
 
             /**
@@ -1244,6 +1255,7 @@ namespace CommandLine {
                             /*
                                 Argument value
                             */
+                            this->accu.empty = false;
                             this->accu.SetValue(lastArg, std::string(arg));
                             expectArgValue = false;
                             continue;
@@ -1265,6 +1277,7 @@ namespace CommandLine {
                                             /*
                                                 Option
                                             */
+                                            this->accu.empty = false;
                                             this->accu.optionNames.insert(argName);
                                             continue;
                                         }
@@ -1272,6 +1285,7 @@ namespace CommandLine {
                                             /*
                                                 Argument
                                             */
+                                            this->accu.empty = false;
                                             expectArgValue = true;
                                             lastArg = item->second;
                                             continue;
@@ -1304,6 +1318,7 @@ namespace CommandLine {
                                             /*
                                                 Option
                                             */
+                                            this->accu.empty = false;
                                             this->accu.optionNames.insert({item->second.GetName()});
                                         } else {
                                             /*
@@ -1329,6 +1344,7 @@ namespace CommandLine {
                                     A single dash. Handle it as an operand
                                     since no argument value is expected now.
                                 */
+                                this->accu.empty = false;
                                 this->AddOperand(arg);
                             }
                         }
@@ -1336,6 +1352,7 @@ namespace CommandLine {
                             /*
                                 Operand
                             */
+                            this->accu.empty = false;
                             this->AddOperand(arg);
                         }
                     } catch (const std::runtime_error &err) {

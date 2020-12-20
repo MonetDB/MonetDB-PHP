@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
         /*
             Help screen
         */
-        if (args.IsOptionSet("help")) {
+        if (args.IsOptionSet("help") || args.IsEmpty()) {
             std::cout << "\nMonet-Explorer\n\n";
             std::cout << cmd.WrapText(
                 "This application helps you to ex|per|i|ment with the text-based \033[1mMAPI protocol\033[0m "
