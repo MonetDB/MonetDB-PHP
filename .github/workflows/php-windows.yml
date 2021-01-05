@@ -4,7 +4,8 @@ on: [push]
 
 jobs:
   build:
-
+    env: 
+      branch: Oct2020
     runs-on: windows-2019
 
     steps:
@@ -12,17 +13,15 @@ jobs:
 
     - name: Install Composer
       run: |
-        choco install composer 
+        choco install --no-progess -y composer 
         composer update
+
+    - name: Install dependencies
+      run: choco install --no-progess -y winflexbison unzip curl gnuwin
 
     - name: Install PHPUnit
       run: |
           composer require --dev --update-with-dependencies phpunit/phpunit ^9
-
-    - name: Install MonetDB
-      run: | 
-          curl https://www.monetdb.org/downloads/Windows/Nov2019/MonetDB5-SQL-Installer-x86_64-20191125.msi
-          msiexec /s MonetDB-ODBC-Installer-i386-20201118.msi /qn
 
     - name: Validate composer.json and composer.lock
       run: composer validate
@@ -40,11 +39,28 @@ jobs:
       if: steps.composer-cache.outputs.cache-hit != 'true'
       run: composer install --prefer-dist --no-progress --no-suggest
 
-    - name: Setup Database
-      run: |
-          cd C:\"Program Files"\MonetDB\MonetDB5\bin
-          mserver5.exe --dbpath=temp
 
+    - name: Install vcpkg packages
+      uses: lukka/run-vcpkg@v5
+      with:
+        vcpkgArguments: --triplet x64-windows libiconv openssl libxml2 pcre zlib getopt bzip2 curl
+        vcpkgGitCommitId: e803bf11296d8e7900dafb41e7b1224778d33dc6
+        appendedCacheKey: ${{ hashFiles(env.vcpkgResponseFile) }}
+
+    - name: Get MonetDB
+      run: |
+        Set-Location c:\
+        curl.exe https://www.monetdb.org/downloads/Windows/Oct2020-SP1/MonetDB5-SQL-Installer-x86_64-20201118.msi
+        msiexec \s MonetDB5-SQL-Installer-x86_64-20201118.msi
+
+    - name: Run MonetDB
+      run: |
+        monetdbd create /usr/local/var/lib/monetdb
+        monetdbd set control=yes /usr/local/var/lib/monetdb/
+        monetdbd set passphrase=testdb /usr/local/var/lib/monetdb
+        monetdbd start /usr/local/var/lib/monetdb
+        monetdb create temp
+        monetdb release temp
 
     - name: Run Unit-Tests
       run: |
