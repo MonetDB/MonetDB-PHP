@@ -8,6 +8,9 @@ client-server protocol (version 9) between the MonetDB server and
 the clients connecting to it. The goal is to provide information
 for the development of future client applications.
 
+If you wish to experiment with the protocol, then feel free to use the command line tool
+[Moner-Expolorer](monet-explorer/README.md), which was created for this purpose.
+
 # Table of contents
 
 - [MonetDB client-server protocol (MAPI)](#monetdb-client-server-protocol-mapi)
@@ -765,14 +768,23 @@ While the `date` type is auto-converted from string, this doesn't happen for the
     sEXECUTE 17 ('2020-08-12')                  // Date can be passed as string
     sEXECUTE 18 ('2020-08-12 12:00:00.000000')  // Throws error for timestamp column
 
-If the column has a `timestamp` type, then pass the value with explicit type conversion:
+Some types are auto-converted from string while others not,
+therefore caution is required for the following types:
 
-    sEXECUTE 18 (timestamp '2020-08-12 12:00:00.000000')
+| Type | Passing to `EXECUTE` |
+| --- | --- |
+| string (char, varchar, clob, etc.) | `sEXECUTE 18 ('Hello World!')` |
+| number (int, double, etc.) | `sEXECUTE 18 (1234.5678)` (Not as a string!) |
+| date | `sEXECUTE 18 ('2020-08-12')` |
+| date-time (timestamp) | `sEXECUTE 18 (timestamp '2020-08-12 12:00:00.000000')` |
+| boolean | `sEXECUTE 19 (true, false)` |
+| time | `sEXECUTE 18 (time '13:37')` |
+| null | `sEXECUTE 18 (null)` |
 
 All string values need to be escaped as discussed in chapter [Escaping](#61-escaping).
-Date values are also passed as strings.
 
-It is important that when an [error message](#54-error---) is returned, all session data are discarded. Which includes the prepared statements.
+Remember that the server will close the connection after an [error message](#54-error---) is returned, which
+also means that the session data gets discarded as well. That includes the prepared statements too.
 
 When you don't need a prepared statement anymore, you can release it with the following command, passing its ID:
 
