@@ -765,21 +765,21 @@ passed without quotes, example:
 
 While the `date` type is auto-converted from string, this doesn't happen for the `timestamp` type:
 
-    sEXECUTE 17 ('2020-08-12')                  // Date can be passed as string
-    sEXECUTE 18 ('2020-08-12 12:00:00.000000')  // Throws error for timestamp column
+    sEXECUTE 17 ('2020-08-12');                  // Date can be passed as string
+    sEXECUTE 18 ('2020-08-12 12:00:00.000000');  // Throws error for timestamp column
 
 Some types are auto-converted from string while others not,
 therefore caution is required for the following types:
 
 | Type | Passing to `EXECUTE` |
 | --- | --- |
-| string (char, varchar, clob, etc.) | `sEXECUTE 18 ('Hello World!')` |
-| number (int, double, etc.) | `sEXECUTE 18 (1234.5678)` (Not as a string!) |
-| date | `sEXECUTE 18 ('2020-08-12')` |
-| date-time (timestamp) | `sEXECUTE 18 (timestamp '2020-08-12 12:00:00.000000')` |
-| boolean | `sEXECUTE 19 (true, false)` |
-| time | `sEXECUTE 18 (time '13:37')` |
-| null | `sEXECUTE 18 (null)` |
+| string (char, varchar, clob, etc.) | `sEXECUTE 18 ('Hello World!');` |
+| number (int, double, etc.) | `sEXECUTE 18 (1234.5678);` (Not as a string!) |
+| date | `sEXECUTE 18 ('2020-08-12');` |
+| date-time (timestamp) | `sEXECUTE 18 (timestamp '2020-08-12 12:00:00.000000');` |
+| boolean | `sEXECUTE 19 (true, false);` |
+| time | `sEXECUTE 18 (time '13:37');` |
+| null | `sEXECUTE 18 (null);` |
 
 All string values need to be escaped as discussed in chapter [Escaping](#61-escaping).
 
