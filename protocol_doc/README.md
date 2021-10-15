@@ -9,7 +9,7 @@ the clients connecting to it. The goal is to provide information
 for the development of future client applications.
 
 If you wish to experiment with the protocol, then feel free to use the command line tool
-[Monet-Explorer](monet-explorer/README.md), which was created for this purpose.
+[Monet-Explorer](monet-explorer/), which was created for this purpose.
 
 # Table of contents
 
