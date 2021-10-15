@@ -77,9 +77,9 @@ class ServerChallenge {
     {
         $parts = explode(':', $challengeLine);
         $count = count($parts) - 1;     	// Last is always empty
-        if ($count != 6) {
+        if ($count < 6) {
             throw new MonetException("Received invalid 'server challenge' string from the server. It"
-                ." contains {$count} fields, instead of 6.");
+                ." contains {$count} fields, should be at least 6.");
         }
 
         $this->salt = trim($parts[0]);
