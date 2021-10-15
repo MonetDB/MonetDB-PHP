@@ -184,18 +184,18 @@ class ServerChallenge {
     {
         $supported = hash_algos();
         if (!in_array($this->passwordHashAlgo, $supported)) {
-            throw new MonetException("The password hash algorith '{$this->passwordHashAlgo}' which was requested "
+            throw new MonetException("The password hash algorithm '{$this->passwordHashAlgo}' which was requested "
                 ."by the server, is not supported by PHP.");
         }
 
         if (!in_array($saltHashAlgo, $supported)) {
-            throw new MonetException("The salt hash algorith '{$this->passwordHashAlgo}', which was specified "
+            throw new MonetException("The salt hash algorithm '{$this->passwordHashAlgo}', which was specified "
                 ."in a constructor parameter of the 'Connection' class, is not supported by PHP. "
                 ."The following algorithms are supported by it: ".implode(', ', $supported));
         }
 
         if (!in_array($saltHashAlgo, $this->supportedSaltHashes)) {
-            throw new MonetException("The salt hash algorith '{$this->passwordHashAlgo}', which was specified "
+            throw new MonetException("The salt hash algorithm '{$this->passwordHashAlgo}', which was specified "
                 ."in a constructor parameter of the 'Connection' class, is not supported by the server. "
                 ."The following algorithms are supported by it: ".implode(', ', $this->supportedSaltHashes));
         }
