@@ -14,11 +14,25 @@
 # limitations under the License.
 #######################################################################
 
-FROM ubuntu:18.04
+FROM debian:11.6
 
 USER root
-WORKDIR /tmp
 ENV DEBIAN_FRONTEND noninteractive
+ENV TZ="Etc/UTC"
+
+#######################################################################
+# Basic installs and setup
+#######################################################################
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y locales apt-utils wget curl g++ make libssl-dev \
+        net-tools gnupg dialog supervisor lsb-release nano vim mc \
+        apt-transport-https software-properties-common gnupg2 zip unzip \
+    && sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen \
+    && locale-gen
+
+ENV LANG en_US.UTF-8  
+ENV LANGUAGE en_US:en  
+ENV LC_ALL en_US.UTF-8 
 
 #######################################################################
 # Create user
@@ -28,61 +42,36 @@ user=monetdb\n\
 password=monetdb\n\
 language=sql\n\
 save_history=true\n\
-" > /etc/skel/.monetdb \
-    && useradd -m -s /bin/bash mphp
-
-#######################################################################
-# Basic installs
-#######################################################################
-RUN apt-get -y update\
-    && apt-get -y install apt-utils locales wget curl tzdata g++ make libssl-dev \
-        ca-certificates openssl net-tools gnupg cron dialog supervisor
-
-#######################################################################
-# Time Zone
-#######################################################################
-RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime\
-    && echo "UTC" > /etc/timezone\
-    && dpkg-reconfigure -f noninteractive tzdata
-
-#######################################################################
-# Character Set
-#######################################################################
-RUN locale-gen en_US.UTF-8\
-    && update-locale LANG=en_US.UTF-8\
-    && update-locale LANGUAGE=en_US:en\
-    && update-locale LC_ALL=en_US.UTF-8
-
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+" > /etc/skel/.monetdb
 
 #######################################################################
 # MonetDB
 #######################################################################
-RUN printf "\
-deb https://dev.monetdb.org/downloads/deb/ bionic monetdb\n\
-deb-src https://dev.monetdb.org/downloads/deb/ bionic monetdb\n\
+RUN useradd -m -s /bin/bash mdb \
+    && printf "\
+deb https://dev.monetdb.org/downloads/deb/ bullseye monetdb\n\
+deb-src https://dev.monetdb.org/downloads/deb/ bullseye monetdb\n\
 " > /etc/apt/sources.list.d/monetdb.list \
-\
-    && curl 'https://www.monetdb.org/downloads/MonetDB-GPG-KEY' | apt-key add - \
-    && apt-get -y update \
+    && wget -O /etc/apt/trusted.gpg.d/monetdb.gpg https://dev.monetdb.org/downloads/MonetDB-GPG-KEY.gpg \
+    && apt-get update \
     && apt-get -y install monetdb5-sql monetdb-client \
-    && chown -R mphp:mphp /var/monetdb5/dbfarm \
-    && chown -R mphp:mphp /var/log/monetdb \
-    && chown -R mphp:mphp /run/monetdb \
-    && usermod -a -G monetdb mphp \
-    && su mphp -c "monetdbd start /var/monetdb5/dbfarm && monetdb create myDatabase" \
-    && su mphp -c "monetdb release myDatabase && monetdb start myDatabase"
+    && chown -R mdb:mdb /var/monetdb5/dbfarm \
+    && chown -R mdb:mdb /var/log/monetdb \
+    && chown -R mdb:mdb /run/monetdb \
+    && usermod -a -G monetdb mdb \
+    && su mdb -c "monetdbd start /var/monetdb5/dbfarm && monetdb create myDatabase" \
+    && su mdb -c "monetdb release myDatabase && monetdb start myDatabase"
 
 #######################################################################
 # Apache + PHP
 #######################################################################
-RUN apt-get -y install apache2 php7.2 php7.2-cli php7.2-mbstring php7.2-curl\
-    php7.2-gd php7.2-xml zip unzip nano\
-    && printf "\n\nServerName localhost\n" >> /etc/apache2/apache2.conf\
-    && curl 'https://getcomposer.org/installer' | php\
-    && mv composer.phar /usr/bin/composer\
+RUN echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/sury-php.list \
+    && curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/sury-keyring.gpg \
+    && apt-get update \
+    && apt-get -y install apache2 php8.1 php8.1-cli php8.1-mbstring php8.1-curl php8.1-gd php8.1-xml \
+    && printf "\n\nServerName localhost\n" >> /etc/apache2/apache2.conf \
+    && curl 'https://getcomposer.org/installer' | php \
+    && mv composer.phar /usr/bin/composer \
 \
     && printf "\
 Alias /MonetDB-PHP /var/MonetDB-PHP/Examples/WebQuery/www/\n\
@@ -98,7 +87,7 @@ Alias /MonetDB-PHP /var/MonetDB-PHP/Examples/WebQuery/www/\n\
 \
     && ln -s /etc/apache2/conf-available/monet-browser.conf \
         /etc/apache2/conf-enabled/monet-browser.conf \
-    && usermod -a -G www-data mphp
+    && usermod -a -G www-data mdb
 
 #################################################################
 # Supervisor
@@ -128,13 +117,13 @@ while [ -f /run/monetdb/merovingian.pid ] && kill -0 $(cat /run/monetdb/meroving
 done\n\
 " > /var/monetdb.sh \
 \
-    && chown mphp:mphp /var/monetdb.sh \
+    && chown mdb:mdb /var/monetdb.sh \
     && chmod 754 /var/monetdb.sh \
 \
     && printf "\
 [program:monetdbd]\n\
 command=/var/monetdb.sh\n\
-user=mphp\n\
+user=mdb\n\
 numprocs=1\n\
 autostart=true\n\
 autorestart=true\n\
@@ -148,4 +137,5 @@ VOLUME ["/var/MonetDB-PHP"]
 WORKDIR /var/MonetDB-PHP
 ENV DEBIAN_FRONTEND dialog
 
+# ENTRYPOINT ["tail", "-f", "/dev/null"]
 ENTRYPOINT ["/usr/bin/supervisord", "-n"]

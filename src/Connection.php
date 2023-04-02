@@ -78,7 +78,7 @@ class Connection {
     /**
      * Connection socket
      *
-     * @var resource|false
+     * @var \Socket|false
      */
     private $socket;
 

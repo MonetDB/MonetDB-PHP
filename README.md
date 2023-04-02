@@ -1,7 +1,7 @@
 MonetDB-PHP
 ===========
 
-The official PHP client library for accessing MonetDB. For PHP 7.2 or above.
+The official PHP client library for accessing MonetDB. For PHP 8.x and 7.2 or above (see instructions below).
 
 Main features:
 - Parameterized queries, using cached prepared statements.
@@ -18,8 +18,9 @@ then please read the [guide about the client-server protocol](protocol_doc/READM
 
 - [MonetDB-PHP](#monetdb-php)
 - [Table of contents](#table-of-contents)
-- [Installation with Composer](#installation-with-composer)
+- [Installation with Composer (PHP 8.x)](#installation-with-composer-php-8x)
 - [Usage without installation](#usage-without-installation)
+- [Installation for PHP 7.2](#installation-for-php-72)
 - [Examples](#examples)
   - [Example 1: Simple query](#example-1-simple-query)
   - [Example 2: Get execution stats](#example-2-get-execution-stats)
@@ -36,9 +37,10 @@ then please read the [guide about the client-server protocol](protocol_doc/READM
   - [StatusRecord Class](#statusrecord-class)
   - [ColumnInfo Class](#columninfo-class)
 - [Development setup through the Docker image](#development-setup-through-the-docker-image)
+- [Running the integration tests](#running-the-integration-tests)
 - [IDE setup](#ide-setup)
 
-# Installation with Composer
+# Installation with Composer (PHP 8.x)
 
 This library is available on Packagist at:
 - https://packagist.org/packages/tbolner/monetdb-php
@@ -47,12 +49,6 @@ First install [Composer](https://getcomposer.org/download/), then execute the fo
 
 ```
 composer require tbolner/monetdb-php
-```
-
-Or add the following line to your `composer.json` file's `require` section and then execute `composer update`:
-
-```
-"tbolner/monetdb-php": "^1.1"
 ```
 
 # Usage without installation
@@ -87,6 +83,14 @@ and the character encoding for your project is set to UTF-8: (This is required f
 ```php
 mb_internal_encoding('UTF-8');
 mb_regex_encoding('UTF-8');
+```
+
+# Installation for PHP 7.2
+
+Only the 1.x versions supports `PHP 7.x`.
+
+```
+composer require tbolner/monetdb-php:1.2
 ```
 
 # Examples
@@ -430,6 +434,26 @@ $result3 = $connection3->Query("...");
 - When you don't need the MonetDB-PHP container anymore, you can get rid of it easily: (this also removes the unused images)
 
         docker/cleanup.sh
+
+# Running the integration tests
+
+- Login into the running container with `docker/login.sh`.
+- Execute the tests with:
+```
+vendor/bin/phpunit tests
+```
+
+The output should be similar to:
+```
+$ vendor/bin/phpunit tests
+PHPUnit 8.5.33 by Sebastian Bergmann and contributors.
+
+........................                                          24 / 24 (100%)
+
+Time: 971 ms, Memory: 4.00 MB
+
+OK (24 tests, 50 assertions)
+```
 
 # IDE setup
 

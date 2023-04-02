@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-docker exec --user mphp -it monetdb-php /bin/bash
+docker exec --user mdb -it monetdb-php /bin/bash

@@ -396,7 +396,7 @@ class Response implements \Iterator {
      * 
      * @ignore
      */
-    public function next() {
+    public function next(): void {
         if ($this->isDiscarded) {
             return;
         }
@@ -411,7 +411,7 @@ class Response implements \Iterator {
      * 
      * @ignore
      */
-    public function rewind() {
+    public function rewind(): void {
         
     }
 

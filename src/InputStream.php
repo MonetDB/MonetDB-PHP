@@ -17,8 +17,6 @@
 
 namespace MonetDB;
 
-use Exception;
-
 /**
  * Class that helps reading and parsing the response of the server.
  */
@@ -55,7 +53,7 @@ class InputStream {
     /**
      * Connection socket
      *
-     * @var resource
+     * @var \Socket
      */
     private $socket;
 

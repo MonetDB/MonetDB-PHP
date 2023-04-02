@@ -18,7 +18,7 @@
     "license": "Apache-2.0",
     "type": "library",
     "require": {
-        "php": ">=7.2",
+        "php": ">=7.2 || >=8.0",
         "ext-mbstring": "*"
     },
     "autoload": {
