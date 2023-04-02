@@ -4,25 +4,25 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d07d33f2408ad8dfe6faf2602ec13749",
+    "content-hash": "4c1736c0fa8f58f09849bd33a37c5526",
     "packages": [
         {
             "name": "tbolner/monetdb-php",
-            "version": "1.1.6",
+            "version": "1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/MonetDB/MonetDB-PHP.git",
-                "reference": "f654c23d5682a8da1017223b2a0186edf67ccab8"
+                "reference": "d4ad26d42682bd292abd8177bc53419fbee96a9d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/MonetDB/MonetDB-PHP/zipball/f654c23d5682a8da1017223b2a0186edf67ccab8",
-                "reference": "f654c23d5682a8da1017223b2a0186edf67ccab8",
+                "url": "https://api.github.com/repos/MonetDB/MonetDB-PHP/zipball/d4ad26d42682bd292abd8177bc53419fbee96a9d",
+                "reference": "d4ad26d42682bd292abd8177bc53419fbee96a9d",
                 "shasum": ""
             },
             "require": {
                 "ext-mbstring": "*",
-                "php": ">=7.2"
+                "php": ">=7.2 || >=8.0"
             },
             "require-dev": {
                 "phpunit/phpunit": "^8"
@@ -54,9 +54,9 @@
             ],
             "support": {
                 "issues": "https://github.com/MonetDB/MonetDB-PHP/issues",
-                "source": "https://github.com/MonetDB/MonetDB-PHP/tree/1.1.6"
+                "source": "https://github.com/MonetDB/MonetDB-PHP/tree/1.2.0"
             },
-            "time": "2021-10-15T22:27:39+00:00"
+            "time": "2023-04-02T17:29:53+00:00"
         }
     ],
     "packages-dev": [],
@@ -70,5 +70,5 @@
         "ext-mbstring": "*"
     },
     "platform-dev": [],
-    "plugin-api-version": "2.1.0"
+    "plugin-api-version": "2.3.0"
 }

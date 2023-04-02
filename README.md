@@ -20,7 +20,7 @@ then please read the [guide about the client-server protocol](protocol_doc/READM
 - [Table of contents](#table-of-contents)
 - [Installation with Composer (PHP 8.x)](#installation-with-composer-php-8x)
 - [Usage without installation](#usage-without-installation)
-- [Installation for PHP 7.2](#installation-for-php-72)
+- [Installation for PHP 7.2 or above.](#installation-for-php-72-or-above)
 - [Examples](#examples)
   - [Example 1: Simple query](#example-1-simple-query)
   - [Example 2: Get execution stats](#example-2-get-execution-stats)
@@ -85,12 +85,12 @@ mb_internal_encoding('UTF-8');
 mb_regex_encoding('UTF-8');
 ```
 
-# Installation for PHP 7.2
+# Installation for PHP 7.2 or above.
 
-Only the 1.x versions supports `PHP 7.x`.
+Only the 1.1.x versions support `PHP 7.2` or above.
 
 ```
-composer require tbolner/monetdb-php:1.2
+composer require tbolner/monetdb-php:1.1.6
 ```
 
 # Examples

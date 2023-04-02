@@ -20,7 +20,7 @@
     "require": {
         "php": ">=7.2",
         "ext-mbstring": "*",
-        "tbolner/monetdb-php": "^1.1"
+        "tbolner/monetdb-php": "^1.2"
     },
     "autoload": {
         "psr-4": {
