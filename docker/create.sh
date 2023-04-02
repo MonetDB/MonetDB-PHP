@@ -13,6 +13,6 @@ docker run -d -h monetdb-php --restart unless-stopped \
     -p 9292:80 -v ${PROJECT_DIR}:/var/MonetDB-PHP \
     --name monetdb-php monetdb-php
 
-docker exec --user root -it monetdb-php /bin/bash -c "usermod -u ${USER_ID} mphp"
+docker exec --user root -it monetdb-php /bin/bash -c "usermod -u ${USER_ID} mdb"
 
-# TODO: create database
+docker exec --user mdb -it monetdb-php /bin/bash -c "cd /var/MonetDB-PHP && composer install"
